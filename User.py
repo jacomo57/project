@@ -3,25 +3,28 @@ import socket
 
 
 def main():
-    user = User()
+    user = User("Jacomo", "pswd")
+    print(user.user_name)
+    print(user.password)
     print(user.prime_array)
-    gen = Block("GEN")
-    # FIRST STEP
-    block1 = gen.make_sub_block("data2", user.get_next_prime())
-    block2 = gen.make_sub_block("data3", user.get_next_prime())
+    block1 = user.block.make_sub_block("data2", user.get_next_prime())
+    block2 = user.block.make_sub_block("data3", user.get_next_prime())
     # SECOND STEP BLOCK2
     block21 = block2.make_sub_block("data4", user.get_next_prime())
     block22 = block2.make_sub_block("data5", user.get_next_prime())
     # THIRD STEP BLOCK 22
     block221 = block22.make_sub_block("DESTINATION REACHED", user.get_next_prime())
-    user.traverse(gen)
+    user.traverse(user.block)
 
 
 class User:
-    def __init__(self):
+    def __init__(self, user_name, password):
         self.prime_limit = 100
         self.prime_array = self.make_prime_array(1, self.prime_limit)
         self.curr_prime_index = 0
+        self.user_name = user_name
+        self.password = password
+        self.block = Block(user_name + password)
 
     def traverse(self, block):
         for child in block.children:
