@@ -25,11 +25,11 @@ class modified_button(tk.Button):
         self.type = type
         self.root = root  # root of the given button widget
         if value == 0:
-            for i in range(len(x.lst)):
+            for i in range(len(exp.lst)):
                 h.append(tk.Button(bg="#ffffff"))  # creating a list of buttons when the first button is created
         h.insert(value, self)  # updating the list with newly created buttons
         value += 1  # increasing the value so that list is not created again
-        self.x = ""
+        self.file_path = ""
         self.bind("<Enter>", lambda event, a="enter": self.changebg(a,
                                                                     event))  # changing the color of the button when it is under cursor
         self.bind("<Leave>", lambda event, a="leave": self.changebg(a,
@@ -75,28 +75,28 @@ class modified_button(tk.Button):
         global b, a, g, l, q,type,r,photo,row,image,text,new_name
         if self.type != "other":
             if command == "cut":  # if the user has selected to cut the file
-                self.u = "{0}/{1}".format(x.z, file["text"])
+                self.u = "{0}/{1}".format(exp.z, file["text"])
                 a = "cut"
                 b = self.u
 
             if command == "copy":  # if the user has selected to copy the file
-                self.u = "{0}/{1}".format(x.z, file["text"])
+                self.u = "{0}/{1}".format(exp.z, file["text"])
                 a = "copy"
                 b = self.u
             if command == "paste":  # if the user has selected to paste the file
                 try:
                     file[0].isalpha()
-                    if file == x.z:
-                        self.x = file
+                    if file == exp.z:
+                        self.file_path = file
                     else:
-                        self.x = "{0}/{1}".format(x.z, file)  # creating the path to paste
+                        self.file_path = "{0}/{1}".format(exp.z, file)  # creating the path to paste
                 except:
-                    self.x = "{0}/{1}".format(x.z, file["text"])
+                    self.file_path = "{0}/{1}".format(exp.z, file["text"])
                 if a == "copy":
-                    # sh.copy(b,self.x)
+                    # sh.copy(b,self.file_path)
                     pass
                 if a == "cut":
-                    # sh.move(b,self.x)
+                    # sh.move(b,self.file_path)
                     pass
             if command == "rename":  # renaming file
                 row = self.grid_info()["row"]
@@ -105,9 +105,9 @@ class modified_button(tk.Button):
                 type = "renaming"
                 self.grid_forget()
                 r = tk.Frame(master=self.root, width=1750, height=10, bg="#ffffff")
-                photo = tk.Label(master=r, image=x.p1)
+                photo = tk.Label(master=r, image=exp.p1)
                 photo.grid(row=0, column=0)
-                new_name = tk.Entry(master=r, width=30)
+                new_name = tk.Entry(master=r, width=50)
                 new_name.grid(row=0, column=1)
                 r.grid(column=0, row=row, sticky="w")
                 new_name.bind("<Return>", lambda event: self.rename())
@@ -125,7 +125,7 @@ class modified_button(tk.Button):
                                  compound="left",
                                  anchor="w",
                                  borderwidth=0)
-        button.bind("<Double 1>", lambda event, a=text: x.create_dirlst(a))
+        button.bind("<Double 1>", lambda event, a=text: exp.create_dirlst(a))
         if button["text"] == "":
             button["text"] = text
         button.grid(column=0, row=row)
@@ -139,7 +139,7 @@ class explorer(tk.Frame):
         # creating the basics and handlers
         self.window = root
         self.lst = []
-        self.starting_path = "d:"
+        self.starting_path = "/Users/idan"
         self.z = " "
         self.last_search = ""
         self.val = [0, 0, 0, 1, 0, 1, 0, 0, 1, 0]
@@ -362,8 +362,8 @@ if __name__ == "__main__":  # creating basic window
     window.geometry("900x600")
     window.title("Door Explorer 1.0")
     #window.iconbitmap("icon1.ico")
-    x = explorer(window)
-    x.create_basics("")
-    x.create_dirlst(x.starting_path)
-    x.create_folder()
+    exp = explorer(window)
+    exp.create_basics("")
+    exp.create_dirlst(exp.starting_path)
+    exp.create_folder()
     window.mainloop()
