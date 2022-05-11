@@ -1,15 +1,13 @@
 import datetime
 import hashlib
 
+
 def main():
     gen = Block()
     print(gen)
     block2 = Block("This is block2", gen.get_hash())
     print(block2)
 
-
-# ciphertext = triple_des('a 16 or 24 byte password').encrypt("secret message", padmode=2)
-# plain_text = triple_des('a 16 or 24 byte password').decrypt(')\xd8\xbfFn#EY\xcbiH\xfa\x18\xb4\xf7\xa2', padmode=2)
 
 class Block:
     def __init__(self, data, prev_hash=0, my_prime=2):

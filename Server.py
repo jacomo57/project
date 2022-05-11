@@ -1,5 +1,6 @@
 import select
 import socket
+from Block import Block
 
 
 def main():
@@ -26,13 +27,27 @@ class Server:
                     self.open_client_sockets.append(new_socket)
                 else:
                     data = self.recv_message(current_socket)
+                    data = data.split("$")
                     if data == "" or data is None or "exit" in data:
                         self.open_client_sockets.remove(current_socket)
                         print("Connection with client closed")
                         self.messages_to_send.append((current_socket, "^exit"))
                     else:  # Put here what happens with the msg
                         print("Received data")
+                        print(data)
+                        if data[0] == "createuser":
+                            self.user_to_db(data)
                 self.send_waitint_messages()
+
+    def user_to_db(self, data): #NEED TO GET USER SOMEHOW
+        name = data[1]
+        password = data[2]
+        if self.db.verify_new_name(name):  # Create block for user, send to user, save on user computer and save to db.
+            block = Block(name + password)
+
+            self.db.insert_user_data(name, password)
+        else:
+            self.protocol_message("Name is already in use, please try another")
 
     def connect(self):
         self.ser_socket.bind(('0.0.0.0', self.port))
