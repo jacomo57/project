@@ -1,7 +1,5 @@
 import datetime
 import hashlib
-import pyDes
-
 
 def main():
     gen = Block()
@@ -19,7 +17,7 @@ class Block:
         self.timestamp = self.get_time_stamp()
         self.data = data  # Only addresses
         self.my_prime = my_prime
-        self.curr_hash = self.get_hash()  # Previous hash * my_prime
+        self.hash = self.get_hash()  # Previous hash * my_prime
         self.children = []
 
     def get_hash(self):
@@ -36,7 +34,7 @@ class Block:
         return f"Prime: {self.my_prime} Time Stamp: {self.timestamp} Addresses: {self.data}"
 
     def make_sub_block(self, data, prime):
-        block = Block(data, self.curr_hash, prime)
+        block = Block(data, self.hash, prime)
         self.children.append(block)
         return block
 
