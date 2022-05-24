@@ -1,25 +1,37 @@
 import select
 import socket
 from Block import Block
+from Globals import Globals
+from Database import Database
+from BlockFolder import BlockFolder
+import pickle
+import os
 
 
 def main():
-    cli_socket = Server(1727, socket.socket(socket.AF_INET, socket.SOCK_STREAM), 2)
-    cli_socket.connect()
-    cli_socket.main_loop()
+    server = Server(socket.socket(socket.AF_INET, socket.SOCK_STREAM))
+    addresses_to_send = ["address1", "address2", "address3"]
+    server.addresses_to_send = addresses_to_send
+    server.connect()
+    server.main_loop()
 
 
 class Server:
-    def __init__(self, port, ser_socket, pre_len):
-        self.port = port
+    def __init__(self, ser_socket, port=0,  pre_len=0):
+        mem = Globals()
+        self.port = mem.port
         self.ser_socket = ser_socket
-        self.pre_len = pre_len
+        self.pre_len = mem.pre_len
         self.cli_socket = None
         self.messages_to_send = []
         self.open_client_sockets = []
+        self.addresses_to_send = []
+        self.dir_path = mem.path_mac
+        # self.db = Database()
 
     def main_loop(self):
         while True:
+            print("While start")
             rlist, wlist, xlist = select.select([self.ser_socket] + self.open_client_sockets, [], [])
             for current_socket in rlist:
                 if current_socket is self.ser_socket:
@@ -27,31 +39,40 @@ class Server:
                     self.open_client_sockets.append(new_socket)
                 else:
                     data = self.recv_message(current_socket)
-                    data = data.split("$")
-                    if data == "" or data is None or "exit" in data:
+                    if data == "" or data is None or "exit" in data or "quit" in data:
                         self.open_client_sockets.remove(current_socket)
                         print("Connection with client closed")
-                        self.messages_to_send.append((current_socket, "^exit"))
-                    else:  # Put here what happens with the msg
+                        self.protocol_message("Connection closed", True, current_socket)
+                    else:
                         print("Received data")
                         print(data)
-                        if data[0] == "createuser":
-                            self.user_to_db(data)
-                self.send_waitint_messages()
+                        if data.__contains__("createuser"):
+                            data = data.split("$")
+                            self.user_to_db(data, current_socket)
+                        else:
+                            if data == "open address needed":
+                                self.send_next_address(current_socket)
+        # While end
+                # Socket for loop end
 
-    def user_to_db(self, data): #NEED TO GET USER SOMEHOW
+    def send_next_address(self, curr_socket):  # Moves first address to last and sends to user.
+        to_send = self.addresses_to_send.pop(0)
+        self.addresses_to_send.append(to_send)
+        self.protocol_message(to_send, True, curr_socket)
+
+    def user_to_db(self, data, curr_socket):
         name = data[1]
         password = data[2]
-        if self.db.verify_new_name(name):  # Create block for user, send to user, save on user computer and save to db.
-            block = Block(name + password)
-
-            self.db.insert_user_data(name, password)
+        if True:  # self.db.verify_new_name(name):  # Create block for user, send to user, save on user computer and save to db.
+            block = BlockFolder(name + password)
+            print("Inserted to db")  # self.db.insert_user_data(name, password, block)
+            self.protocol_message(pickle.dumps(block), False, curr_socket)
         else:
-            self.protocol_message("Name is already in use, please try another")
+            self.protocol_message("Name is already in use, please try another", True, curr_socket)
 
     def connect(self):
         self.ser_socket.bind(('0.0.0.0', self.port))
-        print("Waiting for client")
+        print("Waiting for clients")
         self.ser_socket.listen(5)
 
     def send_waitint_messages(self):
@@ -69,14 +90,12 @@ class Server:
         length_length_str = str(length_length).zfill(2)
 
         curr_socket.send(length_length_str.encode())
-        print("length_length_str " + length_length_str)
 
         curr_socket.send(length_msg_str.encode())
-        print("length_msg_str " + length_msg_str)
 
-        print("message " + message)
         if is_text:
             curr_socket.send(message.encode())
+            print("protocol_message: " + message)
         else:
             curr_socket.send(message)
 
@@ -94,5 +113,8 @@ class Server:
         message = curr_socket.recv(msg_length)
         while len(message) < msg_length:
             message += curr_socket.recv(int(message) - len(message))
-        print(message.decode())
-        return message.decode().split()
+        return message.decode()
+
+
+if __name__ == '__main__':
+    main()
