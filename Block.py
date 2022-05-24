@@ -15,7 +15,7 @@ class Block:
         self.timestamp = self.get_time_stamp()
         self.my_prime = my_prime
         if prev_hash == 0:
-            self.block_name = "Genesis"
+            self.block_name = "gen_" + block_name
         else:
             self.block_name = block_name
         self.hash = self.get_hash(block_name)  # Previous hash * my_prime

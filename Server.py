@@ -17,7 +17,7 @@ def main():
 
 
 class Server:
-    def __init__(self, ser_socket, port=0,  pre_len=0):
+    def __init__(self, ser_socket, port=0, pre_len=0):
         mem = Globals()
         self.port = mem.port
         self.ser_socket = ser_socket
@@ -26,8 +26,8 @@ class Server:
         self.messages_to_send = []
         self.open_client_sockets = []
         self.addresses_to_send = []
-        self.dir_path = mem.path_mac
-        # self.db = Database()
+        self.dir_path = mem.path_used
+        self.db = Database()
 
     def main_loop(self):
         while True:
@@ -38,7 +38,7 @@ class Server:
                     (new_socket, address) = self.ser_socket.accept()
                     self.open_client_sockets.append(new_socket)
                 else:
-                    data = self.recv_message(current_socket)
+                    data = self.recv_message(current_socket).decode()
                     if data == "" or data is None or "exit" in data or "quit" in data:
                         self.open_client_sockets.remove(current_socket)
                         print("Connection with client closed")
@@ -49,11 +49,27 @@ class Server:
                         if data.__contains__("createuser"):
                             data = data.split("$")
                             self.user_to_db(data, current_socket)
+                        if data.__contains__("login"):
+                            data = data.split("$")
+                            self.verify_log_in(data, current_socket)
                         else:
                             if data == "open address needed":
                                 self.send_next_address(current_socket)
         # While end
-                # Socket for loop end
+        # Socket for loop end
+
+    def verify_log_in(self, data, client_socket):
+        name = data[1]
+        password = data[2]
+        if not self.db.verify_new_name(name):
+            self.protocol_message("Send Block", True, client_socket)
+            block = pickle.loads(self.recv_message(client_socket))
+            if self.db.verify_block(name, block):
+                self.protocol_message("Correct", True, client_socket)
+                return True
+            else:
+                self.protocol_message("Incorrect", True, client_socket)
+                return False
 
     def send_next_address(self, curr_socket):  # Moves first address to last and sends to user.
         to_send = self.addresses_to_send.pop(0)
@@ -63,9 +79,10 @@ class Server:
     def user_to_db(self, data, curr_socket):
         name = data[1]
         password = data[2]
-        if True:  # self.db.verify_new_name(name):  # Create block for user, send to user, save on user computer and save to db.
-            block = BlockFolder(name + password)
-            print("Inserted to db")  # self.db.insert_user_data(name, password, block)
+        if self.db.verify_new_name(name):  # Create block for user, send to user save to db.
+            block = BlockFolder(name)
+            self.db.insert_user_data(name, password, block)
+            print("Inserted to db")
             self.protocol_message(pickle.dumps(block), False, curr_socket)
         else:
             self.protocol_message("Name is already in use, please try another", True, curr_socket)
@@ -113,7 +130,7 @@ class Server:
         message = curr_socket.recv(msg_length)
         while len(message) < msg_length:
             message += curr_socket.recv(int(message) - len(message))
-        return message.decode()
+        return message
 
 
 if __name__ == '__main__':
