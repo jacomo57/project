@@ -63,10 +63,10 @@ class User:
         self.my_socket.close()
 
     def create_folder(self, dad_block, address, folder_name):  # Need to update gen in db and file if gen updated
-        block = dad_block.make_sub_block(folder_name, self.get_next_prime(), address)
+        new_block = dad_block.make_sub_block(folder_name, self.get_next_prime(), address)
         self.update_dad_block(dad_block)
-        self.protocol_message("")  # Send to server block + username, server updated block in database by name.
-        self.dump_block(block)
+        self.protocol_message(f'update${self.block}${self.user_name}', True)
+        self.dump_block(new_block)
         print("Folder created")
 
     def update_dad_block(self, block):  # Removes the block and resaves updated version.

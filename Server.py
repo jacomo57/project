@@ -49,14 +49,23 @@ class Server:
                         if data.__contains__("createuser"):
                             data = data.split("$")
                             self.user_to_db(data, current_socket)
-                        if data.__contains__("login"):
+                        elif data.__contains__("login"):
                             data = data.split("$")
                             self.verify_log_in(data, current_socket)
+                        elif data.__contains__("update"):
+                            data = data.split("$")
+                            self.update_gen(current_socket)
                         else:
                             if data == "open address needed":
                                 self.send_next_address(current_socket)
-        # While end
-        # Socket for loop end
+
+    def update_gen(self, current_socket):
+        self.protocol_message("send block", True, current_socket)
+        gen = pickle.loads(self.recv_message(current_socket))
+        print(gen)
+        username = gen.block_name.split("_")
+        self.db.update_db_gen(gen, username[-1])
+
 
     def verify_log_in(self, data, client_socket):
         name = data[1]

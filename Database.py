@@ -31,7 +31,7 @@ class Database:
             if pickle.loads(tup[3]).__eq__(block): return True
         return False
 
-    def update_gen_block(self, block, username):
+    def update_db_gen(self, block, username):
         self.cursor.execute("UPDATE users SET block ='" + block + "' WHERE name = '" + username + "'")
 
     def create_db(self, name):
