@@ -6,6 +6,7 @@ import pickle
 
 def main():
     db = Database()
+    db.show_all_users()
 
 
 class Database:
@@ -28,11 +29,15 @@ class Database:
         self.cursor.execute("SELECT * FROM users WHERE name ='" + name + "'")
         user = self.cursor.fetchall()
         for tup in user:
-            if pickle.loads(tup[3]).__eq__(block): return True
+            if pickle.loads(tup[2]).__eq__(block): return True
         return False
 
     def update_db_gen(self, block, username):
-        self.cursor.execute("UPDATE users SET block ='" + block + "' WHERE name = '" + username + "'")
+        sql_command = "UPDATE users SET block = %s WHERE name = %s"
+        val = (pickle.dumps(block), username)
+        self.cursor.execute(sql_command, val)
+        self.db.commit()
+        print(self.cursor.rowcount, "record(s) affected")
 
     def create_db(self, name):
         self.cursor.execute("CREATE DATABASE " + name)
@@ -43,23 +48,22 @@ class Database:
     def create_users_table(self):
         self.cursor.execute("CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY,"
                             " name VARCHAR(255),"
-                            " password VARCHAR(255),"
                             " block MEDIUMBLOB)")
 
-    def insert_user_data(self, username, password, block):
-        sql_command = "INSERT INTO users (name, password, block) VALUES (%s, %s, %s)"
-        val = (username, password, pickle.dumps(block))
+    def insert_user_data(self, username, block):
+        sql_command = "INSERT INTO users (name, block) VALUES (%s, %s)"
+        val = (username, pickle.dumps(block))
         self.cursor.execute(sql_command, val)
         self.db.commit()  # Required to make the changes.
         print("1 record inserted, ID:", self.cursor.lastrowid)
 
     def show_all_users(self):
         self.cursor.execute("SELECT * FROM users")
-        users = self.cursor.fetchall()
-        for user in users:
-            block = pickle.loads(user.block)
-            print("User Block: " + block)
-            print("User " + user)
+        users_tup = self.cursor.fetchall()
+        for user in users_tup:
+            block = pickle.loads(user[-1])  # I know block is last
+            print("User ", user)
+            print("Block ", block)
 
     def show_by_column(self, column):
         self.cursor.execute("SELECT " + column + " From users")

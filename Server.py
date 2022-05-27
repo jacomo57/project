@@ -45,7 +45,7 @@ class Server:
                         self.protocol_message("Connection closed", True, current_socket)
                     else:
                         print("Received data")
-                        print(data)
+                        print("data: ", data)
                         if data.__contains__("createuser"):
                             data = data.split("$")
                             self.user_to_db(data, current_socket)
@@ -54,22 +54,20 @@ class Server:
                             self.verify_log_in(data, current_socket)
                         elif data.__contains__("update"):
                             data = data.split("$")
-                            self.update_gen(current_socket)
+                            self.update_gen(data, current_socket)
                         else:
                             if data == "open address needed":
                                 self.send_next_address(current_socket)
 
-    def update_gen(self, current_socket):
+    def update_gen(self, data, current_socket):
+        username = data[-1]
         self.protocol_message("send block", True, current_socket)
-        gen = pickle.loads(self.recv_message(current_socket))
-        print(gen)
-        username = gen.block_name.split("_")
-        self.db.update_db_gen(gen, username[-1])
-
+        gen = self.recv_message(current_socket)
+        gen = pickle.loads(gen)
+        self.db.update_db_gen(gen, username)
 
     def verify_log_in(self, data, client_socket):
         name = data[1]
-        password = data[2]
         if not self.db.verify_new_name(name):
             self.protocol_message("Send Block", True, client_socket)
             block = pickle.loads(self.recv_message(client_socket))
@@ -79,6 +77,9 @@ class Server:
             else:
                 self.protocol_message("Incorrect", True, client_socket)
                 return False
+        else:
+            self.protocol_message("Incorrect", True, client_socket)
+            return False
 
     def send_next_address(self, curr_socket):  # Moves first address to last and sends to user.
         to_send = self.addresses_to_send.pop(0)
@@ -87,10 +88,9 @@ class Server:
 
     def user_to_db(self, data, curr_socket):
         name = data[1]
-        password = data[2]
         if self.db.verify_new_name(name):  # Create block for user, send to user save to db.
             block = BlockFolder(name)
-            self.db.insert_user_data(name, password, block)
+            self.db.insert_user_data(name, block)
             print("Inserted to db")
             self.protocol_message(pickle.dumps(block), False, curr_socket)
         else:

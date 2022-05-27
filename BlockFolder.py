@@ -7,9 +7,9 @@ class BlockFolder(Block):
             super().__init__(block_name, prev_hash, prime)
         else:
             super().__init__(block_name)
-        self.address = address  # Will get from server repository later.
+        self.address = address
 
     def make_sub_block(self, block_name, prime, address):  # Need to check the type of block and create accordingly.
         block = BlockFolder(block_name, self.hash, prime, address)
-        self.children.append(block)
+        self.children.append(self.metadata(address, block_name))
         return block
