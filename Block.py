@@ -10,7 +10,7 @@ def main():
 
 
 class Block:
-    def __init__(self, block_name, prev_hash=0, my_prime=2, address=0):
+    def __init__(self, block_name, prev_hash=0, my_prime=2, father_name=0, address=0):
         self.prev_hash = prev_hash
         self.timestamp = self.get_time_stamp()
         self.my_prime = my_prime
@@ -20,7 +20,7 @@ class Block:
             self.block_name = block_name
         self.hash = self.get_hash(block_name)  # Previous hash * my_prime
         self.address = address
-        self.children = []
+        self.father_name = father_name
 
     def get_hash(self, block_name):
         if self.prev_hash == 0:
@@ -28,7 +28,7 @@ class Block:
         else:
             return self.prev_hash * self.my_prime
 
-    def metadata(self, address, child_name):
+    def metadata(self, child_name, address):  # When creating child, pass child name+address and save to self.children
         metadata = [child_name, address, self.hash]
         return metadata
 
@@ -38,10 +38,10 @@ class Block:
         return datetime.datetime.now()
 
     def __str__(self):
-        return f"Name: {self.block_name}, Prime: {self.my_prime}, Time Stamp: {self.timestamp}, {len(self.children)} children"
+        return f"Name: {self.block_name}, Prime: {self.my_prime}, Time Stamp: {self.timestamp}"
 
-    def __repr__(self):  # Needs to be abstract/overridden in ancestors.
-        return f"Block Info - {self}, {len(self.children)} children"
+    def __repr__(self):
+        return f"Block Info - {self}"
 
 
 if __name__ == '__main__':

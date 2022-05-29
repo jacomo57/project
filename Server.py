@@ -1,11 +1,9 @@
 import select
 import socket
-from Block import Block
 from Globals import Globals
 from Database import Database
 from BlockFolder import BlockFolder
 import pickle
-import os
 
 
 def main():
@@ -39,7 +37,7 @@ class Server:
                     self.open_client_sockets.append(new_socket)
                 else:
                     data = self.recv_message(current_socket).decode()
-                    if data == "" or data is None or "exit" in data or "quit" in data:
+                    if data == "exit":
                         self.open_client_sockets.remove(current_socket)
                         print("Connection with client closed")
                         self.protocol_message("Connection closed", True, current_socket)

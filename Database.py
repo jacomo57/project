@@ -1,6 +1,4 @@
 import mysql.connector as mysql
-from Block import Block
-from User import User
 import pickle
 
 

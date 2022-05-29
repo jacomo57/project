@@ -1,15 +1,9 @@
-from Block import Block
-from BlockFolder import BlockFolder
-from BlockFile import BlockFile
 from Globals import Globals
 import socket
 import pickle
 import os
 from GUI import Toplevel1 as GUI
-from GUI import ToolTip
-import sys
 import tkinter as tk
-import tkinter.ttk as ttk
 
 
 def main():
@@ -31,84 +25,54 @@ class User:
         self.pre_len = mem.pre_len
         self.dir_path = mem.path_used
         self.make_dir_path()
-        self.gui = self.start_gui()
 
-    @staticmethod
-    def start_gui():
+    def start_gui(self):
         root = tk.Tk()
         root.protocol('WM_DELETE_WINDOW', root.destroy)  # Creates a toplevel widget.
         top1 = root
-        w1 = GUI(top1)
-        return w1
+        gui = GUI(self, top1)
 
     def main_loop(self):
-        close_connection = False
         self.connect()
-        self.gui = self.start_gui()
-
-
-        # start_input = input("Do you want to sign up or log in?")
-        # if start_input == "sign up":
-        #     self.create_user()
-        # elif start_input == "log in":
-        #     self.log_in()
-
-        logged_in = False
-        while True:
-            self.gui.top.update_idletasks()
-            self.gui.top.update()
-
-            if not logged_in:
-                self.login_or_signup()
-
-            message = input("Enter your request")
-
-            if message.__contains__("folder"):
-                message = message.split()  # Example of input: 'folder block1'
-                self.protocol_message("open address needed", True)
-                address = self.recv_message()
-                self.create_folder(self.block, address, message[1])  # Need to be able to be on different blocks in tree
-            elif message.__contains__("traverse"):
-                message = message.split()
-                self.traverse(message[-1], os.path.join(self.dir_path, message[-1]))
-            elif message.__contains__("load"):
-                message = message.split()
-                block = self.load_block(message[-1], os.path.join(self.dir_path, message[-1]))
-                print(block)
-            else:
-                self.protocol_message(message, True)
-                answer = self.recv_message().decode()
-                print(answer)
-                if answer == "Connection closed":
-                    close_connection = True
-            if close_connection:
-                break
-
+        self.start_gui()
         self.my_socket.close()
+        return
 
-    def login_or_signup(self):
-        print("in login or signup")
-        while True:
-            username = self.gui.sign_up_clicked()
-            login_info = self.gui.login_clicked()
-            if username:
-                self.create_user(username)
-                return True
-            elif login_info:
-                self.log_in(login_info)
-                return True
+    def exit_program(self):
+        self.protocol_message("exit", True)
+        answer = self.recv_message().decode()
+        if answer == "Connection closed":
+            return True
+        else:
+            return False
 
-    def create_folder(self, dad_block, address, folder_name):  # Need to update gen in db and file if gen updated
-        new_block = dad_block.make_sub_block(folder_name + self.user_name, self.get_next_prime(), address)
+    def create_folder(self, dad_block, folder_name):  # Need to update gen in db and file if gen updated
+        self.protocol_message("open address needed", True)
+        address = self.recv_message()
+        new_block = dad_block.make_sub_block((folder_name + self.user_name), self.get_next_prime(), dad_block.block_name, address)
         self.update_dad_block(dad_block)
         print("create_folder block ", new_block)
         self.protocol_message(f'update${self.user_name}', True)
         if self.recv_message().decode() == "send block":  # updates db if folder is gen's child
-            print("send block if")
             if self.block.block_name.__contains__("gen_"):
                 self.protocol_message(pickle.dumps(self.block), False)
         self.dump_block(new_block)
         print("Folder created")
+        return new_block
+
+    def create_file(self, dad_block, file_name, pickled_file):
+        self.protocol_message("open address needed", True)
+        address = self.recv_message()
+        new_block = dad_block.make_sub_file(file_name + self.user_name, self.get_next_prime(), pickled_file, dad_block.block_name, address)
+        print(new_block)
+        self.update_dad_block(dad_block)
+        self.protocol_message(f'update${self.user_name}', True)
+        if self.recv_message().decode() == "send block":  # updates db if folder is gen's child
+            if dad_block.block_name.__contains__("gen_"):
+                self.protocol_message(pickle.dumps(self.block), False)
+        self.dump_block(new_block)
+        print("File created")
+        return new_block
 
     def update_dad_block(self, block):  # Removes the block and resaves updated version.
         os.remove(os.path.join(self.dir_path, block.block_name))
@@ -120,15 +84,29 @@ class User:
         else:
             file = open(os.path.join(self.dir_path, block.block_name), 'ab')
         pickle.dump(block, file)
-        print(block.block_name, "dumped")
+        print(block.block_name, "dumped at ", os.path.join(self.dir_path, block.block_name))
         file.close()
 
-    def load_block(self, block_name, address):  # Address curr useless, when seperate pc's will be needed.
-        file = open(os.path.join(self.dir_path, block_name), 'rb')
-        block = pickle.load(file)
-        print(block.block_name, "loaded")
-        file.close()
-        return block
+    def load_block(self, block_name, address=0):  # Address curr useless, when seperate pc's will be needed.
+        if self.check_my_block(block_name):
+            file = open(os.path.join(self.dir_path, block_name), 'rb')
+            block = pickle.load(file)
+            print(block.block_name, "loaded")
+            file.close()
+            return block
+        else:
+            print("Not your file to view")
+
+    def check_my_block(self, block_name):  # Check to see if username matches the block selected
+        try:
+            if block_name.__contains__("gen_"):
+                return True
+            block_name_len = -(len(self.user_name))
+            if block_name[block_name_len:] == self.user_name:
+                return True
+        except:
+            print("No block name entered")
+            return False
 
     def add_file(self, address, file_name):
         pass
@@ -145,25 +123,20 @@ class User:
         self.my_socket.connect(('127.0.0.1', self.port))
         print("Connection established")
 
-    def log_in(self, name_and_block=0):  # name_and_block needed for gui
+    def log_in(self, username):
         while True:
-            #username = input("Username: ")
-            username = name_and_block[0]
-            block = name_and_block[1]
-            # I want this to open file explorer and i could pick gen block.
             if self.verify_log_in(username):
                 self.user_name = username
-                print("Logged in")
+                return True
                 break
             else:
                 print("One or more credentials are incorrect, please try again.")
             break
+        return False
 
     def verify_log_in(self, username):
         self.protocol_message(f'login${username}', True)
-        print("Message sent to server")
         if self.recv_message().decode() == "Send Block":
-            print("In send block if")
             block_gen = self.load_block("gen_" + username, os.path.join(self.dir_path, "gen_" + username))
             self.protocol_message(pickle.dumps(block_gen), False)
             answer = self.recv_message().decode()
@@ -175,20 +148,20 @@ class User:
         else:
             return False
 
-    def create_user(self, username=0):  # Needs to receive gen from server and update self.block
+    def create_user(self, username):
         while True:
-            # username = self.gui.sign_up_clicked()
             print(username)
             if self.send_user(username):
                 self.user_name = username
+                return True
                 break
             else:
                 print("This username is already taken, please try another")
             break
+        return False
 
     def send_user(self, username):
         self.protocol_message(f'createuser${username}', True)
-        print("Message sent to server")
         gen = self.recv_message()
         if self.is_pickle_stream(gen):
             gen = pickle.loads(gen)
@@ -208,12 +181,14 @@ class User:
             return False
 
     # metadata = [child_name, address, self.hash]
-    def traverse(self, child_name, address):  # This + load_block will need update when it's separate computers.
-        block_to_traverse = self.load_block(child_name,
-                                            address)  # Address curr useless, when seperate pc's will be needed.
+    def traverse(self, child_name, address=0):  # This + load_block will need update when it's separate computers.
+        block_to_traverse = self.load_block(child_name, address)  # Address curr useless till seperate pc's.
         print(block_to_traverse)
-        for child in block_to_traverse.children:
-            self.traverse(child[0], child[1])
+        try:
+            for child in block_to_traverse.children:
+                self.traverse(child[0], child[1])
+        except:
+            print("Error: load block returned none")
 
     @staticmethod
     def make_prime_array(lower, upper):
