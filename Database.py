@@ -17,17 +17,20 @@ class Database:
 
     # If name exists return false else true.
     def verify_new_name(self, name):
-        self.cursor.execute("Select * FROM users WHERE name ='" + name + "'")
+        exe = "Select * FROM users WHERE name = %s"
+        self.cursor.execute(exe, name)
         users = self.cursor.fetchall()
         if users:
             return False
         return True
 
     def verify_block(self, name, block):  # Needs to check if there is a user with both name and block, true if exists.
-        self.cursor.execute("SELECT * FROM users WHERE name ='" + name + "'")
+        exe = "Select * FROM users WHERE name = %s"
+        self.cursor.execute(exe, name)
         user = self.cursor.fetchall()
         for tup in user:
-            if pickle.loads(tup[2]).__eq__(block): return True
+            if pickle.loads(tup[2]).__eq__(block):
+                return True
         return False
 
     def update_db_gen(self, block, username):
