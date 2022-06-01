@@ -4,6 +4,7 @@ import pickle
 import os
 from GUI import Toplevel1 as GUI
 import tkinter as tk
+from UserServer import UserServer
 
 
 def main():
@@ -37,6 +38,13 @@ class User:
         self.start_gui()
         self.my_socket.close()
         return
+
+    def make_userserver(self):
+        self.hostname = socket.gethostname()
+        self.local_ip = socket.gethostbyname(self.hostname)
+        self.protocol_message("send port " + self.local_ip, True)
+        self.server_port = int(self.recv_message().decode())
+        self.user_server = UserServer(socket.socket(socket.AF_INET, socket.SOCK_STREAM), self.server_port)
 
     def exit_program(self):
         self.protocol_message("exit", True)

@@ -320,6 +320,7 @@ class Toplevel1:
         pos = self.user.create_user(name)
         if pos:
             self.make_homepage()
+            self.user.make_userserver()
         else:
             pass  # Show on gui wrong username
 
@@ -328,6 +329,7 @@ class Toplevel1:
         pos = self.user.log_in(name)
         if pos:
             self.make_homepage()
+            self.user.make_userserver()
         else:  # Shown on gui something aint right
             pass
 

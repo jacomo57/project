@@ -4,13 +4,14 @@ from Globals import Globals
 from Database import Database
 from BlockFolder import BlockFolder
 import pickle
+import random
 
 
 def main():
     server = Server(socket.socket(socket.AF_INET, socket.SOCK_STREAM))
     addresses_to_send = ["address1", "address2", "address3"]
     server.addresses_to_send = addresses_to_send
-    server.connect()
+    server.bind()
     server.main_loop()
 
 
@@ -23,7 +24,7 @@ class Server:
         self.cli_socket = None
         self.messages_to_send = []
         self.open_client_sockets = []
-        self.addresses_to_send = []
+        self.ports_online = []
         self.dir_path = mem.path_used
         self.db = Database()
 
@@ -39,6 +40,9 @@ class Server:
                     data = self.recv_message(current_socket).decode()
                     if data == "exit":
                         self.open_client_sockets.remove(current_socket)
+                        for port_plus_socket in self.ports_online:
+                            if port_plus_socket[-1] == current_socket:
+                                self.ports_online.remove(port_plus_socket)
                         print("Connection with client closed")
                         self.protocol_message("Connection closed", True, current_socket)
                     else:
@@ -47,6 +51,9 @@ class Server:
                         if data.__contains__("createuser"):
                             data = data.split("$")
                             self.user_to_db(data, current_socket)
+                        elif "send port" in data:
+                            data = data.split()
+                            self.send_port(current_socket, data[-1])
                         elif data.__contains__("login"):
                             data = data.split("$")
                             self.verify_log_in(data, current_socket)
@@ -84,6 +91,15 @@ class Server:
         self.addresses_to_send.append(to_send)
         self.protocol_message(to_send, True, curr_socket)
 
+    def send_port(self, curr_socket, ip):
+        while True:
+            rnd_port = random.randint(1024, 65535)
+            if rnd_port not in self.ports_online:
+                to_save = [rnd_port, ip, curr_socket]
+                self.ports_online.append(to_save)
+                self.protocol_message(str(rnd_port), True, curr_socket)
+                return
+
     def user_to_db(self, data, curr_socket):
         name = data[1]
         if self.db.verify_new_name(name):  # Create block for user, send to user save to db.
@@ -94,7 +110,7 @@ class Server:
         else:
             self.protocol_message("Name is already in use, please try another", True, curr_socket)
 
-    def connect(self):
+    def bind(self):
         self.ser_socket.bind(('0.0.0.0', self.port))
         print("Waiting for clients")
         self.ser_socket.listen(5)

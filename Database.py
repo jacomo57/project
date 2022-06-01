@@ -18,7 +18,7 @@ class Database:
     # If name exists return false else true.
     def verify_new_name(self, name):
         exe = "Select * FROM users WHERE name = %s"
-        self.cursor.execute(exe, name)
+        self.cursor.execute(exe, (name,))
         users = self.cursor.fetchall()
         if users:
             return False
@@ -26,7 +26,7 @@ class Database:
 
     def verify_block(self, name, block):  # Needs to check if there is a user with both name and block, true if exists.
         exe = "Select * FROM users WHERE name = %s"
-        self.cursor.execute(exe, name)
+        self.cursor.execute(exe, (name,))
         user = self.cursor.fetchall()
         for tup in user:
             if pickle.loads(tup[2]).__eq__(block):
