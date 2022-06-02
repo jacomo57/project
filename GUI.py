@@ -260,12 +260,17 @@ class Toplevel1:
 
         self.homepage.tkraise()
 
-    def show_in_tv(self, block, dad_name):
+    def show_in_tv(self, dad_name):
+        if self.next_networker.answer == None:
+            return
+            pass # error
+
+        block = self.next_networker.answer
         if not dad_name == 0:
             for block_shown in self.on_tv[0]:  # Block name shown
                 if block.block_name == block_shown:
                     return
-        to_show = [block.block_name, dad_name, len(block.children)]
+        to_show = [block.block_name, dad_name, len(block.children)]  # Supposed to be dad children
         if isinstance(block, BlockFolder):
             self.treeview.insert(parent='', index='end', iid=self.counter, text='Folder',values=to_show)
         elif isinstance(block, BlockFile):
@@ -287,9 +292,22 @@ class Toplevel1:
     def make_folder_clicked(self):
         new_name = simpledialog.askstring(title="New Folder Name", prompt="Enter the new folder's name:")
         dad_name = simpledialog.askstring(title="Father Name", prompt="Enter the father's name:")
-        dad_block = self.user.load_block(dad_name)
-        new_block = self.user.create_folder(dad_block, new_name)
-        self.show_in_tv(new_block, dad_name)
+        self.begin_create_load_block(dad_name, new_name)
+        #dad_block = self.user.load_block(dad_name)
+        #new_block = self.user.create_folder(dad_block, new_name)
+        self.root.after(2300, lambda: self.show_in_tv())
+        self.show_in_tv(dad_name)
+
+    def begin_create_load_block(self, block_name, address=0):
+        self.networker = Networker()
+        self.user.load_block(block_name, self.networker, address)
+        self.root.after(1100, self.end_load_block_and_begin_create_folder)
+        pass
+
+    def end_load_block_and_begin_create_folder(self):
+        if self.networker.answer is not None:
+            self.next_networker = Networker()
+            self.create_folder(self.networker.answer, self.next_networker, new_name)
 
     def get_file_clicked(self):
         file_name = simpledialog.askstring(title="Block File name", prompt="Enter the block-file's name:")

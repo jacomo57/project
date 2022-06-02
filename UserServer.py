@@ -8,25 +8,27 @@ import pickle
 
 def main():
     server = UserServer(socket.socket(socket.AF_INET, socket.SOCK_STREAM))
-    addresses_to_send = ["address1", "address2", "address3"]
-    server.addresses_to_send = addresses_to_send
     server.bind()
     server.main_loop()
 
 
 class UserServer:
-    def __init__(self, ser_socket, port, pre_len=0):
+    def __init__(self, ser_socket, port=0, pre_len=0):
         mem = Globals()
-        self.port = port
+        self.my_port = mem.userserver_port
+        self.master_port = mem.port
+        self.master_ip = mem.master_ip
         self.ser_socket = ser_socket
         self.pre_len = mem.pre_len
         self.cli_socket = None
+        self.my_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.messages_to_send = []
         self.open_client_sockets = []
+        self.available_to_send = []
         self.dir_path = mem.path_used
-        self.main_loop()
 
     def main_loop(self):
+        self.connect_to_master()
         while True:
             print("While start")
             rlist, wlist, xlist = select.select([self.ser_socket] + self.open_client_sockets, [], [])
@@ -46,9 +48,17 @@ class UserServer:
                         if "send block" in data:  # Example: send block test1gg
                             data = data.split()
                             self.send_block(data[-1], current_socket)
-                        elif "save block " in data:  # Example: save block test1. Next msg: *block*
+                        elif "save block " in data:  # Example: save block. Next msg: *block*
                             data = data.split()
                             self.save_block(data, current_socket)
+            self.protocol_message("I am userserver", True, self.my_socket)
+            self.available_to_send = pickle.loads(self.recv_message(self.my_socket))
+
+    def connect_to_master(self):
+        self.my_socket.connect((self.master_ip, self.master_port))
+        print("Connection established")
+        self.protocol_message("I am userserver", True, self.my_socket)
+        self.available_to_send = pickle.loads(self.recv_message(self.my_socket))
 
     def send_block(self, block_name, curr_socket):
         file = open(os.path.join(self.dir_path, block_name), 'rb')
@@ -58,7 +68,7 @@ class UserServer:
         self.protocol_message(pickle.dump(block), False, curr_socket)
         return block
 
-    def save_block(self, block_name, curr_socket):
+    def save_block(self, curr_socket):
         self.protocol_message("send block", True, curr_socket)
         block = self.recv_message()
         if self.is_pickle_stream(block):
@@ -94,9 +104,7 @@ class UserServer:
             print("Not your file to view")
 
     def bind(self):
-        self.hostname = socket.gethostname()
-        self.local_ip = socket.gethostbyname(self.hostname)
-        self.ser_socket.bind(("0.0.0.0", self.port))
+        self.ser_socket.bind(("0.0.0.0", self.my_port))
         print("Waiting for clients")
         self.ser_socket.listen(5)
 

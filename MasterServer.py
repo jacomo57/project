@@ -17,16 +17,16 @@ def main():
 
 class Server:
     def __init__(self, ser_socket, port=0, pre_len=0):
-        mem = Globals()
-        self.port = mem.port
+        self.mem = Globals()
+        self.port = self.mem.port
         self.ser_socket = ser_socket
-        self.pre_len = mem.pre_len
+        self.pre_len = self.mem.pre_len
         self.cli_socket = None
         self.messages_to_send = []
         self.open_client_sockets = []
         self.ports_online = []
-        self.dir_path = mem.path_used
-        self.db = Database()
+        self.dir_path = self.mem.path_used
+        # self.db = Database()
 
     def main_loop(self):
         while True:
@@ -36,6 +36,7 @@ class Server:
                 if current_socket is self.ser_socket:
                     (new_socket, address) = self.ser_socket.accept()
                     self.open_client_sockets.append(new_socket)
+                    print("Client accepted")
                 else:
                     data = self.recv_message(current_socket).decode()
                     if data == "exit":
@@ -51,64 +52,71 @@ class Server:
                         if data.__contains__("createuser"):
                             data = data.split("$")
                             self.user_to_db(data, current_socket)
+                        elif 'int' in type(data):
+                            self.get_port(data, current_socket)
+                            self.protocol_message("Yes", True, current_socket)
                         elif "send port" in data:
                             data = data.split()
-                            self.send_port(current_socket, data[-1])
+                            self.get_port(current_socket, data[-1])
                         elif data.__contains__("login"):
                             data = data.split("$")
                             self.verify_log_in(data, current_socket)
                         elif data.__contains__("update"):
                             data = data.split("$")
                             self.update_gen(data, current_socket)
-                        else:
-                            if data == "open address needed":
-                                self.send_next_address(current_socket)
+                        elif data == "open address needed":
+                            self.send_next_address(current_socket)
+                        elif data == "I am userserver":
+                            self.protocol_message(pickle.dumps(self.ports_online), False, current_socket)
 
     def update_gen(self, data, current_socket):
         username = data[-1]
         self.protocol_message("send block", True, current_socket)
         gen = self.recv_message(current_socket)
         gen = pickle.loads(gen)
-        self.db.update_db_gen(gen, username)
+        # self.db.update_db_gen(gen, username)
 
     def verify_log_in(self, data, client_socket):
         name = data[1]
-        if not self.db.verify_new_name(name):
-            self.protocol_message("Send Block", True, client_socket)
-            block = pickle.loads(self.recv_message(client_socket))
-            if self.db.verify_block(name, block):
-                self.protocol_message("Correct", True, client_socket)
-                return True
-            else:
-                self.protocol_message("Incorrect", True, client_socket)
-                return False
-        else:
-            self.protocol_message("Incorrect", True, client_socket)
-            return False
+        # if not self.db.verify_new_name(name):
+        self.protocol_message("Send Block", True, client_socket)
+        block = pickle.loads(self.recv_message(client_socket))
+        # if self.db.verify_block(name, block):
+        self.protocol_message("Correct", True, client_socket)
+        return True
+        #     else:
+        #         self.protocol_message("Incorrect", True, client_socket)
+        #         return False
+        # else:
+        #     self.protocol_message("Incorrect", True, client_socket)
+        #     return False
 
     def send_next_address(self, curr_socket):  # Moves first address to last and sends to user.
-        to_send = self.addresses_to_send.pop(0)
-        self.addresses_to_send.append(to_send)
-        self.protocol_message(to_send, True, curr_socket)
+        to_send = self.ports_online.pop(0)
+        self.ports_online.append(to_send)
+        self.protocol_message(pickle.dumps(to_send), True, curr_socket)
 
-    def send_port(self, curr_socket, ip):
+    def get_port(self, ip, curr_socket):
         while True:
             rnd_port = random.randint(1024, 65535)
-            if rnd_port not in self.ports_online:
-                to_save = [rnd_port, ip, curr_socket]
-                self.ports_online.append(to_save)
-                self.protocol_message(str(rnd_port), True, curr_socket)
-                return
+            for pair in self.ports_online:
+                if ip not in pair[1]:
+                    to_save = [self.mem.userserver_port, ip]
+                    print(to_save)
+                    self.ports_online.append(to_save)
+                    return rnd_port
 
     def user_to_db(self, data, curr_socket):
         name = data[1]
-        if self.db.verify_new_name(name):  # Create block for user, send to user save to db.
-            block = BlockFolder(name)
-            self.db.insert_user_data(name, block)
-            print("Inserted to db")
-            self.protocol_message(pickle.dumps(block), False, curr_socket)
-        else:
-            self.protocol_message("Name is already in use, please try another", True, curr_socket)
+        ip = data[-1]
+        user_port = self.get_port(ip, curr_socket)
+        # if self.db.verify_new_name(name):  # Create block for user, send to user save to db.
+        block = BlockFolder(name)
+        # self.db.insert_user_data(name, block, ip, user_port)
+        print("Inserted to db")
+        self.protocol_message(pickle.dumps(block), False, curr_socket)
+        # else:
+        #     self.protocol_message("Name is already in use, please try another", True, curr_socket)
 
     def bind(self):
         self.ser_socket.bind(('0.0.0.0', self.port))

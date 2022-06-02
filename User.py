@@ -1,3 +1,5 @@
+import fcntl
+
 from Globals import Globals
 import socket
 import pickle
@@ -5,7 +7,7 @@ import os
 from GUI import Toplevel1 as GUI
 import tkinter as tk
 from UserServer import UserServer
-
+from Networker import Networker
 
 def main():
     user = User()
@@ -22,19 +24,21 @@ class User:
         self.user_name = 0
         self.block = None
         self.port = mem.port
-        self.my_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.my_socket = 0
         self.pre_len = mem.pre_len
         self.dir_path = mem.path_used
+        self.networker = 0
         self.make_dir_path()
+        self.gui = None
 
     def start_gui(self):
         root = tk.Tk()
         root.protocol('WM_DELETE_WINDOW', root.destroy)  # Creates a toplevel widget.
         top1 = root
-        gui = GUI(self, top1)
+        self.gui = GUI(self, top1)
 
     def main_loop(self):
-        self.connect()
+        self.connect(('127.0.0.1', self.port))
         self.start_gui()
         self.my_socket.close()
         return
@@ -42,9 +46,7 @@ class User:
     def make_userserver(self):
         self.hostname = socket.gethostname()
         self.local_ip = socket.gethostbyname(self.hostname)
-        self.protocol_message("send port " + self.local_ip, True)
-        self.server_port = int(self.recv_message().decode())
-        self.user_server = UserServer(socket.socket(socket.AF_INET, socket.SOCK_STREAM), self.server_port)
+        self.protocol_message(self.local_ip, True)
 
     def exit_program(self):
         self.protocol_message("exit", True)
@@ -56,7 +58,7 @@ class User:
 
     def create_folder(self, dad_block, folder_name):  # Need to update gen in db and file if gen updated
         self.protocol_message("open address needed", True)
-        address = self.recv_message()
+        address = pickle.loads(self.recv_message())
         new_block = dad_block.make_sub_block((folder_name + self.user_name), self.get_next_prime(), dad_block.block_name, address)
         self.update_dad_block(dad_block)
         print("create_folder block ", new_block)
@@ -95,15 +97,27 @@ class User:
         print(block.block_name, "dumped at ", os.path.join(self.dir_path, block.block_name))
         file.close()
 
-    def load_block(self, block_name, address=0):  # Address curr useless, when seperate pc's will be needed.
-        if self.check_my_block(block_name):
-            file = open(os.path.join(self.dir_path, block_name), 'rb')
-            block = pickle.load(file)
-            print(block.block_name, "loaded")
-            file.close()
-            return block
-        else:
-            print("Not your file to view")
+    def load_block(self, block_name, networker, address=0):
+        self.networker.get_to_work()
+        self.gui.root.after(1100, self.check_for_answer)
+        #if self.check_my_block(block_name):
+        #    file = open(os.path.join(self.dir_path, block_name), 'rb')
+        #    block = pickle.load(file)
+        #    print(block.block_name, "loaded")
+        #    file.close()
+        #    return block
+        #else:
+        #    print("Not your file to view")
+
+    def begin_create_load_block(self, block_name, address=0):
+        self.load_block(block_name, address)
+        self.gui.root.after(1100, self.end_load_block)
+        pass
+
+    def end_load_block_and_begin_create_folder(self):
+        if self.networker.answer is not None:
+            self.create_folder(self.networker.answer, new_name)
+
 
     def check_my_block(self, block_name):  # Check to see if username matches the block selected
         try:
@@ -116,8 +130,6 @@ class User:
             print("No block name entered")
             return False
 
-    def add_file(self, address, file_name):
-        pass
 
     def make_dir_path(self):
         try:
@@ -127,8 +139,11 @@ class User:
         print(f'Directory is in {self.dir_path}')
         return self.dir_path
 
-    def connect(self):
-        self.my_socket.connect(('127.0.0.1', self.port))
+    def connect(self, address):
+        print("In connect")
+        self.my_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        print(address)
+        self.my_socket.connect((address[0], address[1]))
         print("Connection established")
 
     def log_in(self, username):
@@ -169,7 +184,9 @@ class User:
         return False
 
     def send_user(self, username):
-        self.protocol_message(f'createuser${username}', True)
+        hostname = socket.gethostname()
+        ip_address = socket.gethostbyname(hostname)
+        self.protocol_message(f'createuser${username}${ip_address}', True)
         gen = self.recv_message()
         if self.is_pickle_stream(gen):
             gen = pickle.loads(gen)
@@ -239,16 +256,34 @@ class User:
             self.my_socket.send(message)
 
     def recv_message(self):
-        length_length_str = self.my_socket.recv(2)
+        length_length_str = ""
+        try:
+            length_length_str = self.my_socket.recv(2)
+        except socket.timeout as e:
+            print("Receive timeout occurred")
+
         if length_length_str == "":
-            pass
+            return None
         length_length_str = length_length_str.decode()
         length_length = int(length_length_str)
 
-        msg_length_str = self.my_socket.recv(length_length).decode()
+        msg_length_str = ""
+        try:
+            msg_length_str = self.my_socket.recv(length_length).decode()
+        except socket.timeout as e:
+            print("Receive timeout occurred")
+
+        if msg_length_str == "":
+            return None
         msg_length = int(msg_length_str)
 
-        message = self.my_socket.recv(int(msg_length))
+        message = ""
+        try:
+            message = self.my_socket.recv(int(msg_length))
+        except socket.timeout as e:
+            print("Receive timeout occurred")
+        if message == "":
+            return None
         while len(message) < int(msg_length):
             message += self.my_socket.recv(int(message) - len(message))
         return message

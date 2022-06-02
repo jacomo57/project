@@ -4,7 +4,8 @@ import pickle
 
 def main():
     db = Database()
-    db.show_all_users()
+    db.create_db("Project Idan")
+    db.create_users_table()
 
 
 class Database:
@@ -49,11 +50,13 @@ class Database:
     def create_users_table(self):
         self.cursor.execute("CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY,"
                             " name VARCHAR(255),"
-                            " block MEDIUMBLOB)")
+                            " block MEDIUMBLOB),"
+                            " ip VARCHAR(255),"
+                            " port VARCHAR(255)")
 
-    def insert_user_data(self, username, block):
-        sql_command = "INSERT INTO users (name, block) VALUES (%s, %s)"
-        val = (username, pickle.dumps(block))
+    def insert_user_data(self, username, block, ip, port):
+        sql_command = "INSERT INTO users (name, block, ip, port) VALUES (%s, %s, %s, %s)"
+        val = (username, pickle.dumps(block), ip, port)
         self.cursor.execute(sql_command, val)
         self.db.commit()  # Required to make the changes.
         print("1 record inserted, ID:", self.cursor.lastrowid)
@@ -63,8 +66,10 @@ class Database:
         users_tup = self.cursor.fetchall()
         for user in users_tup:
             block = pickle.loads(user[-1])  # I know block is last
-            print("User ", user)
+            print("User ", user[0])
             print("Block ", block)
+            print("IP ", user[2])
+            print("PORT ", user[-1])
 
     def show_by_column(self, column):
         self.cursor.execute("SELECT " + column + " From users")
