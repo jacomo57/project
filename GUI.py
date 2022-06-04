@@ -11,6 +11,7 @@ from time import time, localtime, strftime
 
 from BlockFolder import BlockFolder
 from BlockFile import BlockFile
+from Networker import Networker
 
 
 class Toplevel1:
@@ -45,6 +46,8 @@ class Toplevel1:
 
         self.root = root
         self.user = user
+        self.networker = Networker()
+        self.next_networker = Networker()
 
         self.header = tk.Label(self.root)
         self.header.place(relx=0.0, rely=-0.018, height=65, width=810)
@@ -256,15 +259,11 @@ class Toplevel1:
 
         self.counter = 0
         self.on_tv = []
-        self.show_in_tv(self.user.load_block("gen_" + self.user.user_name), 0)
+        self.show_in_tv("gen_" + self.user.user_name)
 
         self.homepage.tkraise()
 
-    def show_in_tv(self, dad_name):
-        if self.next_networker.answer == None:
-            return
-            pass # error
-
+    def show_in_tv(self):  # use networker answers
         block = self.next_networker.answer
         if not dad_name == 0:
             for block_shown in self.on_tv[0]:  # Block name shown
@@ -272,9 +271,9 @@ class Toplevel1:
                     return
         to_show = [block.block_name, dad_name, len(block.children)]  # Supposed to be dad children
         if isinstance(block, BlockFolder):
-            self.treeview.insert(parent='', index='end', iid=self.counter, text='Folder',values=to_show)
+            self.treeview.insert(parent='', index='end', iid=self.counter, text='Folder', values=to_show)
         elif isinstance(block, BlockFile):
-            self.treeview.insert(parent='', index='end', iid=self.counter, text='File',values=to_show)
+            self.treeview.insert(parent='', index='end', iid=self.counter, text='File', values=to_show)
         counter = 0
         if not dad_name == 0:
             for block_shown in self.on_tv[0]:  # Block name shown
@@ -286,28 +285,34 @@ class Toplevel1:
         self.on_tv.append(to_show)
         self.counter += 1
 
+    def make_folder_clicked(self):
+        new_name = simpledialog.askstring(title="New Folder Name", prompt="Enter the new folder's name:")
+        dad_name = simpledialog.askstring(title="Father Name", prompt="Enter the father's name:")
+        dad_block = self.user.load_block(dad_name)
+        new_block = self.user.create_folder(dad_block, new_name)
+        self.show_in_tv(new_block, dad_name)
+
     def update_record(self, id, values):
         self.treeview.item(id, text="Folder", values=values)
 
     def make_folder_clicked(self):
         new_name = simpledialog.askstring(title="New Folder Name", prompt="Enter the new folder's name:")
         dad_name = simpledialog.askstring(title="Father Name", prompt="Enter the father's name:")
-        self.begin_create_load_block(dad_name, new_name)
-        #dad_block = self.user.load_block(dad_name)
-        #new_block = self.user.create_folder(dad_block, new_name)
-        self.root.after(2300, lambda: self.show_in_tv())
-        self.show_in_tv(dad_name)
+        self.begin_create_load_block(dad_name, new_name, address)
+        # dad_block = self.user.load_block(dad_name)
+        # new_block = self.user.create_folder(dad_block, new_name)
+        self.root.after(2400, lambda: self.show_in_tv())  # blocks will be in networker and next_networker??
 
-    def begin_create_load_block(self, block_name, address=0):
-        self.networker = Networker()
-        self.user.load_block(block_name, self.networker, address)
-        self.root.after(1100, self.end_load_block_and_begin_create_folder)
+    def begin_create_load_block(self, block_name, new_name, address=0):
+        self.user.load_block(block_name, self.networker, address)  # Will give networker work
+        self.root.after(1200, self.end_load_block_and_begin_create_folder)  #
         pass
 
     def end_load_block_and_begin_create_folder(self):
         if self.networker.answer is not None:
-            self.next_networker = Networker()
-            self.create_folder(self.networker.answer, self.next_networker, new_name)
+             self.user.create_folder(self.networker.answer, new_name, self.next_networker)
+
+    def check_answer(self):
 
     def get_file_clicked(self):
         file_name = simpledialog.askstring(title="Block File name", prompt="Enter the block-file's name:")
@@ -337,8 +342,8 @@ class Toplevel1:
         name = self.username_entry_signup.get()
         pos = self.user.create_user(name)
         if pos:
-            self.make_homepage()
-            self.user.make_userserver()
+            self.make_homepage() ##
+            self.user.make_userserver() ##
         else:
             pass  # Show on gui wrong username
 

@@ -4,14 +4,17 @@ from threading import Thread
 
 
 class Networker:
-    def __init__(self, message, save_or_load, address):
-        self.message = message
-        self.save_or_load = save_or_load
-        self.address = address
+    def __init__(self):
+        self.message = None
+        self.save_or_load = None
+        self.address = None
         self.answer = None
         self.err_msg = None
 
-    def get_to_work(self):
+    def get_to_work(self, message, save_or_load, address):
+        self.message = message
+        self.save_or_load = save_or_load
+        self.address = address
         thread = Thread(self.send_recv)
         thread.start()
 

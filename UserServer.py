@@ -24,7 +24,7 @@ class UserServer:
         self.my_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.messages_to_send = []
         self.open_client_sockets = []
-        self.available_to_send = []
+        self.ports_online = []
         self.dir_path = mem.path_used
 
     def main_loop(self):
@@ -51,14 +51,21 @@ class UserServer:
                         elif "save block " in data:  # Example: save block. Next msg: *block*
                             data = data.split()
                             self.save_block(data, current_socket)
+                        elif data == "open address needed":
+                            self.send_next_address(current_socket)
             self.protocol_message("I am userserver", True, self.my_socket)
-            self.available_to_send = pickle.loads(self.recv_message(self.my_socket))
+            self.ports_online = pickle.loads(self.recv_message(self.my_socket))
+
+    def send_next_address(self, curr_socket):  # Moves first address to last and sends to user.
+        to_send = self.ports_online.pop(0)
+        self.ports_online.append(to_send)
+        self.protocol_message(pickle.dumps(to_send), True, curr_socket)
 
     def connect_to_master(self):
         self.my_socket.connect((self.master_ip, self.master_port))
         print("Connection established")
         self.protocol_message("I am userserver", True, self.my_socket)
-        self.available_to_send = pickle.loads(self.recv_message(self.my_socket))
+        self.ports_online = pickle.loads(self.recv_message(self.my_socket))
 
     def send_block(self, block_name, curr_socket):
         file = open(os.path.join(self.dir_path, block_name), 'rb')

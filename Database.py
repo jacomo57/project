@@ -4,11 +4,10 @@ import pickle
 
 def main():
     db = Database()
-    db.create_db("Project Idan")
-    db.create_users_table()
 
 
-class Database:
+
+class Database:  # (id, name, block, ip, port)
     def __init__(self):
         self.db = mysql.connect(host="localhost",
                                 user="root",
@@ -48,11 +47,9 @@ class Database:
         self.cursor.execute("TRUNCATE TABLE users")
 
     def create_users_table(self):
-        self.cursor.execute("CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY,"
-                            " name VARCHAR(255),"
-                            " block MEDIUMBLOB),"
-                            " ip VARCHAR(255),"
-                            " port VARCHAR(255)")
+        self.cursor.execute("CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY,name VARCHAR(255), "
+                            "block MEDIUMBLOB, userserver_ip VARCHAR(255), userserver_port VARCHAR(255)")
+
 
     def insert_user_data(self, username, block, ip, port):
         sql_command = "INSERT INTO users (name, block, ip, port) VALUES (%s, %s, %s, %s)"
