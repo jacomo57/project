@@ -264,7 +264,8 @@ class Toplevel1:
         self.homepage.tkraise()
 
     def show_in_tv(self):  # use networker answers
-        block = self.next_networker.answer
+        dad_block = self.networker.answer
+        new_block = self.next_networker.answer
         if not dad_name == 0:
             for block_shown in self.on_tv[0]:  # Block name shown
                 if block.block_name == block_shown:
@@ -301,14 +302,14 @@ class Toplevel1:
         self.begin_create_load_block(dad_name, new_name, address)
         # dad_block = self.user.load_block(dad_name)
         # new_block = self.user.create_folder(dad_block, new_name)
-        self.root.after(2400, lambda: self.show_in_tv())  # blocks will be in networker and next_networker??
+        self.root.after(2400, self.show_in_tv)  # blocks will be in networker and next_networker??
 
     def begin_create_load_block(self, block_name, new_name, address=0):
         self.user.load_block(block_name, self.networker, address)  # Will give networker work
-        self.root.after(1200, self.end_load_block_and_begin_create_folder)  #
+        self.root.after(1200, lambda: self.end_load_block_and_begin_create_folder(new_name))  #
         pass
 
-    def end_load_block_and_begin_create_folder(self):
+    def end_load_block_and_begin_create_folder(self, new_name):
         if self.networker.answer is not None:
              self.user.create_folder(self.networker.answer, new_name, self.next_networker)
 

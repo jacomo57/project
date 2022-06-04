@@ -1,5 +1,3 @@
-import fcntl
-
 from Globals import Globals
 import socket
 import pickle
@@ -124,16 +122,6 @@ class User:
         #    return block
         # else:
         #    print("Not your file to view")
-
-
-    # def begin_create_load_block(self, block_name, address=0):
-    #     self.load_block(block_name, address)
-    #     self.gui.root.after(1100, self.end_load_block)
-    #     pass
-    #
-    # def end_load_block_and_begin_create_folder(self):
-    #     if self.networker.answer is not None:
-    #         self.create_folder(self.networker.answer, new_name)
 
     def check_my_block(self, block_name):  # Check to see if username matches the block selected
         try:
