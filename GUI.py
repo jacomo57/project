@@ -48,6 +48,7 @@ class Toplevel1:
         self.user = user
         self.networker = Networker()
         self.next_networker = Networker()
+        self.curr_name = 0
 
         self.header = tk.Label(self.root)
         self.header.place(relx=0.0, rely=-0.018, height=65, width=810)
@@ -259,28 +260,40 @@ class Toplevel1:
 
         self.counter = 0
         self.on_tv = []
-        self.show_in_tv("gen_" + self.user.user_name)
+        self.gen_block = self.user.load_block("gen_" + self.user.user_name, True)
+        self.show_gen_in_tv(self.gen_block)
 
         self.homepage.tkraise()
+
+    def show_gen_in_tv(self, gen):
+        to_show = [0, gen.block_name, len(gen.children)]
+        self.treeview.insert(parent='', index='end', iid=self.counter, text='Folder', values=to_show)
 
     def show_in_tv(self):  # use networker answers
         dad_block = self.networker.answer
         new_block = self.next_networker.answer
+        dad_name = dad_block.block_name
         if not dad_name == 0:
-            for block_shown in self.on_tv[0]:  # Block name shown
-                if block.block_name == block_shown:
+            for block_shown in self.on_tv:  # Block name shown
+                if new_block.block_name == block_shown[0]:
                     return
-        to_show = [block.block_name, dad_name, len(block.children)]  # Supposed to be dad children
-        if isinstance(block, BlockFolder):
-            self.treeview.insert(parent='', index='end', iid=self.counter, text='Folder', values=to_show)
-        elif isinstance(block, BlockFile):
-            self.treeview.insert(parent='', index='end', iid=self.counter, text='File', values=to_show)
+
+        for child in dad_block.children:  # metadata = [child_name, address, dad_name]
+            for block_shown in self.on_tv:
+                if child[0] == block_shown[0]:  # Means child is on tv
+                    return
+            to_show = [child[0], dad_name, len(new_block.children)]
+            if isinstance(new_block, BlockFolder):
+                self.treeview.insert(parent='', index='end', iid=self.counter, text='Folder', values=to_show)
+            elif isinstance(new_block, BlockFile):
+                self.treeview.insert(parent='', index='end', iid=self.counter, text='File', values=to_show)
+
         counter = 0
         if not dad_name == 0:
-            for block_shown in self.on_tv[0]:  # Block name shown
-                if dad_name == block_shown:  # If true needs update
-                    self.on_tv[counter][-1] = self.on_tv[counter][-1] + 1
-                    self.update_record(counter, values=self.on_tv[counter])
+            for block_shown in self.on_tv:  # Block name shown
+                if dad_name == block_shown[0]:  # If true needs update
+                    self.on_tv[counter][-1] = self.on_tv[counter][-1] + 1  # updates children count on the list
+                    self.update_record(counter, values=self.on_tv[counter])  # updates children count on treeview
                     print("Treeview record updated")
                 counter += 1
         self.on_tv.append(to_show)
@@ -311,9 +324,9 @@ class Toplevel1:
 
     def end_load_block_and_begin_create_folder(self, new_name):
         if self.networker.answer is not None:
-             self.user.create_folder(self.networker.answer, new_name, self.next_networker)
+            self.user.create_folder(self.networker.answer, new_name, self.next_networker)
 
-    def check_answer(self):
+    # def check_answer(self):
 
     def get_file_clicked(self):
         file_name = simpledialog.askstring(title="Block File name", prompt="Enter the block-file's name:")
@@ -336,26 +349,34 @@ class Toplevel1:
 
     def load_button_clicked(self):
         user_inp = simpledialog.askstring(title="Block to Load", prompt="Enter what block to load:")
-        block = self.user.load_block(user_inp)
-        print(block)
+        if "gen_" in user_inp:
+            block = self.user.load_block(user_inp, True)
+            print(block)
+        else:
+            block = self.user.load_block(user_inp)
+            print(block)
 
     def sign_up_clicked(self):
-        name = self.username_entry_signup.get()
-        pos = self.user.create_user(name)
-        if pos:
-            self.make_homepage() ##
-            self.user.make_userserver() ##
-        else:
-            pass  # Show on gui wrong username
+        while True:  # fucked perma loop
+            name = self.username_entry_signup.get()
+            if name == self.curr_name:
+                print("same name")
+            else:
+                pos = self.user.create_user(name)
+                if pos:
+                    self.make_homepage()
+                    self.user.make_userserver()
+                    return
+            self.curr_name = name
+            print("Name taken")
 
     def login_clicked(self):  # Needs to get file for block and stuff
-        name = self.username_entry.get()
-        pos = self.user.log_in(name)
-        if pos:
-            self.make_homepage()
-            self.user.make_userserver()
-        else:  # Shown on gui something aint right
-            pass
+        while True:
+            name = self.username_entry.get()
+            pos = self.user.log_in(name)
+            if pos:
+                self.make_homepage()
+                self.user.make_userserver()
 
     def exit_program(self):
         if self.user.exit_program():

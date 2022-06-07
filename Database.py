@@ -4,7 +4,7 @@ import pickle
 
 def main():
     db = Database()
-
+    db.show_all_users()
 
 
 class Database:  # (id, name, block, ip, port)
@@ -62,10 +62,11 @@ class Database:  # (id, name, block, ip, port)
         self.cursor.execute("SELECT * FROM users")
         users_tup = self.cursor.fetchall()
         for user in users_tup:
-            block = pickle.loads(user[-1])  # I know block is last
-            print("User ", user[0])
+            block = pickle.loads(user[2])  # I know block is last
+            print("id ", user[0])
+            print("User ", user[1])
             print("Block ", block)
-            print("IP ", user[2])
+            print("IP ", user[3])
             print("PORT ", user[-1])
 
     def show_by_column(self, column):

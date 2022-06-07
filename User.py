@@ -47,6 +47,8 @@ class User:
         self.hostname = socket.gethostname()
         self.local_ip = socket.gethostbyname(self.hostname)
         self.protocol_message(self.local_ip, True)
+        yes = self.recv_message()
+        print(yes)
 
     def exit_program(self):
         self.protocol_message("exit", True)
@@ -175,15 +177,12 @@ class User:
             return False
 
     def create_user(self, username):
-        while True:
-            print(username)
-            if self.send_user(username):
-                self.user_name = username
-                return True
-                break
-            else:
-                print("This username is already taken, please try another")
-            break
+        print(username)
+        if self.send_user(username):
+            self.user_name = username
+            return True
+        else:
+            print("This username is already taken, please try another")
         return False
 
     def send_user(self, username):

@@ -28,10 +28,6 @@ class Block:
         else:
             return self.prev_hash * self.my_prime
 
-    def metadata(self, child_name, address):  # When creating child, pass child name+address and save to self.children
-        metadata = [child_name, address, self.hash]
-        return metadata
-
 
     @staticmethod
     def get_time_stamp():

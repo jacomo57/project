@@ -39,6 +39,7 @@ class Server:
                     print("Client accepted")
                 else:
                     data = self.recv_message(current_socket).decode()
+                    print(type(data))
                     if data == "exit":
                         self.open_client_sockets.remove(current_socket)
                         for port_plus_socket in self.ports_online:
@@ -52,7 +53,7 @@ class Server:
                         if data.__contains__("createuser"):
                             data = data.split("$")
                             self.user_to_db(data, current_socket)
-                        elif 'int' in type(data):
+                        elif data.__contains__("."):
                             self.get_port(data)
                             self.protocol_message("Yes", True, current_socket)
                         # elif "send port" in data:
@@ -98,13 +99,25 @@ class Server:
 
     def get_port(self, ip):
         while True:
+            print("get_port while")
             rnd_port = random.randint(1024, 65535)
-            for pair in self.ports_online:
-                if ip not in pair[1]:
-                    to_save = [self.mem.userserver_port, ip]
-                    print(to_save)
-                    self.ports_online.append(to_save)
-                    return rnd_port
+            if self.ports_online:
+                print("in if")
+                for pair in self.ports_online:
+                    print(pair)
+                    print(ip)
+                    if ip is not pair[1]:
+                        to_save = [self.mem.userserver_port, ip]
+                        print(to_save)
+                        self.ports_online.append(to_save)
+                        return self.mem.userserver_port
+                    elif ip is pair[1]:
+                        return self.mem.userserver_port
+            elif not self.ports_online:  # if empty
+                to_save = [self.mem.userserver_port, ip]
+                print(to_save)
+                self.ports_online.append(to_save)
+                return self.mem.userserver_port
 
     def user_to_db(self, data, curr_socket):
         name = data[1]
