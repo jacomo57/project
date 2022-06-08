@@ -54,7 +54,9 @@ class UserServer:
                         elif data == "open address needed":
                             self.send_next_address(current_socket)
             self.protocol_message("I am userserver", True, self.my_socket)
-            self.ports_online = pickle.loads(self.recv_message(self.my_socket))
+            self.ports_online = self.recv_message(self.my_socket)
+            self.ports_online = pickle.loads(self.ports_online)
+            print("ports online sent ", self.ports_online)
 
     def send_next_address(self, curr_socket):  # Moves first address to last and sends to user.
         to_send = self.ports_online.pop(0)
@@ -62,10 +64,12 @@ class UserServer:
         self.protocol_message(pickle.dumps(to_send), True, curr_socket)
 
     def connect_to_master(self):
-        self.my_socket.connect((self.master_ip, self.master_port))
+        print("in connect to master")
+        self.my_socket.connect(('127.0.0.1', self.master_port))
         print("Connection established")
         self.protocol_message("I am userserver", True, self.my_socket)
         self.ports_online = pickle.loads(self.recv_message(self.my_socket))
+        print(self.ports_online)
 
     def send_block(self, block_name, curr_socket):
         file = open(os.path.join(self.dir_path, block_name), 'rb')
@@ -141,6 +145,7 @@ class UserServer:
 
     @staticmethod
     def recv_message(curr_socket):
+        print("in recv")
         length_length_str = curr_socket.recv(2)
         if length_length_str == "":
             pass

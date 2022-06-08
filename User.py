@@ -59,9 +59,11 @@ class User:
             return False
 
     def create_folder(self, dad_block, folder_name, networker):  # Need to update gen in db and file if gen updated
-        networker.get_to_work("open address needed", True, self.my_socket)
+        networker.get_to_work("open address needed", True, self.master_address, self)  # address from server
+        print(networker.answer)
+
         new_block = dad_block.make_sub_block((folder_name + self.user_name), self.get_next_prime(),
-                                             dad_block.block_name, pickle.loads(networker.answer))
+                                             dad_block.block_name, networker.answer)
         networker.answer = new_block
         self.update_dad_block(dad_block)
         print("create_folder block ", new_block)
@@ -104,26 +106,19 @@ class User:
         print(block.block_name, "dumped at ", os.path.join(self.dir_path, block.block_name))
         file.close()
 
-    def load_block(self, block_name, is_gen=False, address=0,):  # Here gives networker work instead of load itself.
-        if is_gen:
+    def load_block(self, block_name, networker=0, address=0):  # Here gives networker work instead of load itself.
+        if "gen_" in block_name:
             if self.check_my_block(block_name):
-               file = open(os.path.join(self.dir_path, block_name), 'rb')
-               block = pickle.load(file)
-               print(block.block_name, "loaded")
-               file.close()
-               return block
+                file = open(os.path.join(self.dir_path, block_name), 'rb')
+                block = pickle.load(file)
+                print(block.block_name, "loaded")
+                file.close()
+                return block
             else:
                 print("Not your file to view")
                 return
-        self.networker.get_to_work()
-        # if self.check_my_block(block_name):
-        #    file = open(os.path.join(self.dir_path, block_name), 'rb')
-        #    block = pickle.load(file)
-        #    print(block.block_name, "loaded")
-        #    file.close()
-        #    return block
-        # else:
-        #    print("Not your file to view")
+        print("networker got work ", "send block " + block_name, " ", address)
+        networker.get_to_work("send block " + block_name, address, self)
 
     def check_my_block(self, block_name):  # Check to see if username matches the block selected
         try:

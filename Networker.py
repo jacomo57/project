@@ -10,17 +10,21 @@ class Networker:
         self.address = None
         self.answer = None
         self.err_msg = None
+        self.user = None
 
-    def get_to_work(self, message, save_or_load, address):
+    def get_to_work(self, message, save_or_load, address, user):
         self.message = message
         self.save_or_load = save_or_load
         self.address = address
-        thread = Thread(self.send_recv)
+        self.user = user
+        thread = Thread(target=self.send_recv)
         thread.start()
 
     def send_recv(self):
         try:
+            print("in send_recv")
             self.user.connect(self.address)
+            print("after connection established")
             self.user.protocol_message(self.message, self.save_or_load)
             self.my_socket.settimeout(0.01)
             answer = self.user.recv_message()
