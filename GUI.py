@@ -51,7 +51,7 @@ class Toplevel1:
         self.curr_name = 0
 
         self.header = tk.Label(self.root)
-        self.header.place(relx=0.0, rely=-0.018, height=65, width=810)
+        self.header.place(relx=0.0, rely=-0.0, height=65, width=810)
         self.header.configure(activebackground="#f9f9f9")
         self.header.configure(background="#7bbfac")
         self.header.configure(compound='left')
@@ -262,7 +262,7 @@ class Toplevel1:
         self.on_tv = []
         self.gen_block = self.user.load_block("gen_" + self.user.user_name)
         self.curr_block = self.gen_block
-        self.show_gen_in_tv(self.gen_block)
+        self.show_in_tv(self.user.load_block("gen_" + self.user.user_name), 0)
 
         self.homepage.tkraise()
 
@@ -270,39 +270,60 @@ class Toplevel1:
         to_show = [0, gen.block_name, len(gen.children)]
         self.treeview.insert(parent='', index='end', iid=self.counter, text='Folder', values=to_show)
 
-    def show_in_tv(self):  # use networker answers
-        dad_block = self.networker.answer
-        print("dad_block ", dad_block)
-        new_block = self.next_networker.answer
-        print("new_block ", new_block)
-        dad_name = dad_block.block_name
-        if not dad_name == 0:  # IF BLOCK SHOWN
-            for block_shown in self.on_tv:  # Block name shown
-                if new_block.block_name == block_shown[0]:
-                    return
-
-        for child in dad_block.children:  # metadata = [child_name, address, dad_name]
-            for block_shown in self.on_tv:  # SHOWS CHILDREN FROM METADATA
-                if child[0] == block_shown[0]:  # Means child is on tv
-                    break
-                else:
-                    to_show = [child[0], dad_name, len(new_block.children)]
-                    if isinstance(new_block, BlockFolder):
-                        self.treeview.insert(parent='', index='end', iid=self.counter, text='Folder', values=to_show)
-                    elif isinstance(new_block, BlockFile):
-                        self.treeview.insert(parent='', index='end', iid=self.counter, text='File', values=to_show)
-
-        counter = 0  # UPDATE DAD
+    def show_in_tv(self, block, dad_name):
         if not dad_name == 0:
-            for block_shown in self.on_tv:  # Block name shown
-                if dad_name == block_shown[0]:  # If true needs update
-                    self.on_tv[counter][-1] = self.on_tv[counter][-1] + 1  # updates children count on the list
-                    self.update_record(counter, values=self.on_tv[counter])  # updates children count on treeview
+            for block_shown in self.on_tv[0]:  # Block name shown
+                if block.block_name == block_shown:
+                    return
+        to_show = [block.block_name, dad_name, len(block.children)]
+        if isinstance(block, BlockFolder):
+            self.treeview.insert(parent='', index='end', iid=self.counter, text='Folder',values=to_show)
+        elif isinstance(block, BlockFile):
+            self.treeview.insert(parent='', index='end', iid=self.counter, text='File',values=to_show)
+        counter = 0
+        if not dad_name == 0:
+            for block_shown in self.on_tv[0]:  # Block name shown
+                if dad_name == block_shown:  # If true needs update
+                    self.on_tv[counter][-1] = self.on_tv[counter][-1] + 1
+                    self.update_record(counter, values=self.on_tv[counter])
                     print("Treeview record updated")
                 counter += 1
-        if to_show:
-            self.on_tv.append(to_show)
+        self.on_tv.append(to_show)
         self.counter += 1
+
+    # def show_in_tv(self):  # use networker answers
+    #     dad_block = self.networker.answer
+    #     print("dad_block ", dad_block)
+    #     new_block = self.next_networker.answer
+    #     print("new_block ", new_block)
+    #     dad_name = dad_block.block_name
+    #     if not dad_name == 0:  # IF BLOCK SHOWN
+    #         for block_shown in self.on_tv:  # Block name shown
+    #             if new_block.block_name == block_shown[0]:
+    #                 return
+    #
+    #     for child in dad_block.children:  # metadata = [child_name, address, dad_name]
+    #         for block_shown in self.on_tv:  # SHOWS CHILDREN FROM METADATA
+    #             if child[0] == block_shown[0]:  # Means child is on tv
+    #                 break
+    #             else:
+    #                 to_show = [child[0], dad_name, len(new_block.children)]
+    #                 if isinstance(new_block, BlockFolder):
+    #                     self.treeview.insert(parent='', index='end', iid=self.counter, text='Folder', values=to_show)
+    #                 elif isinstance(new_block, BlockFile):
+    #                     self.treeview.insert(parent='', index='end', iid=self.counter, text='File', values=to_show)
+    #
+    #     counter = 0  # UPDATE DAD
+    #     if not dad_name == 0:
+    #         for block_shown in self.on_tv:  # Block name shown
+    #             if dad_name == block_shown[0]:  # If true needs update
+    #                 self.on_tv[counter][-1] = self.on_tv[counter][-1] + 1  # updates children count on the list
+    #                 self.update_record(counter, values=self.on_tv[counter])  # updates children count on treeview
+    #                 print("Treeview record updated")
+    #             counter += 1
+    #     if to_show:
+    #         self.on_tv.append(to_show)
+    #     self.counter += 1
 
     # def make_folder_clicked(self):
     #     new_name = simpledialog.askstring(title="New Folder Name", prompt="Enter the new folder's name:")
@@ -317,15 +338,22 @@ class Toplevel1:
     def make_folder_clicked(self):
         new_name = simpledialog.askstring(title="New Folder Name", prompt="Enter the new folder's name:")
         dad_name = simpledialog.askstring(title="Father Name", prompt="Enter the father's name:")
-        # address = 0
-        # for child in self.curr_block.children:
-        #     if child[0] == new_name:
-        #         address = child[1]
-        address = self.curr_block.address
-        print("address ", address)
-        self.begin_create_load_block(dad_name, new_name, address)
-        self.root.after(20000, self.show_in_tv)  # blocks will be in networker and next_networker??
-        # Timeout 2400
+        dad_block = self.user.load_block(dad_name)
+        new_block = self.user.create_folder(dad_block, new_name)
+        self.show_in_tv(new_block, dad_name)
+
+    # def make_folder_clicked(self):
+    #     new_name = simpledialog.askstring(title="New Folder Name", prompt="Enter the new folder's name:")
+    #     dad_name = simpledialog.askstring(title="Father Name", prompt="Enter the father's name:")
+    #     # address = 0
+    #     # for child in self.curr_block.children:
+    #     #     if child[0] == new_name:
+    #     #         address = child[1]
+    #     address = self.curr_block.address
+    #     print("address ", address)
+    #     self.begin_create_load_block(dad_name, new_name, address)
+    #     self.root.after(20000, self.show_in_tv)  # blocks will be in networker and next_networker??
+    #     # Timeout 2400
 
     def begin_create_load_block(self, block_name, new_name, address):
         print("in begin load")

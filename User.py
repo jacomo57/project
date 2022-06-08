@@ -23,7 +23,7 @@ class User:
         self.user_name = 0
         self.block = None
         self.port = mem.port
-        self.master_address = ('127.0.0.1', self.port)
+        self.master_address = ('192.168.0.116', self.port)
         self.my_socket = 0
         self.pre_len = mem.pre_len
         self.dir_path = mem.path_used
@@ -58,22 +58,37 @@ class User:
         else:
             return False
 
-    def create_folder(self, dad_block, folder_name, networker):  # Need to update gen in db and file if gen updated
-        networker.get_to_work("open address needed", True, self.master_address, self)  # address from server
-        print(networker.answer)
-
+    def create_folder(self, dad_block, folder_name):  # Need to update gen in db and file if gen updated
+        self.protocol_message("open address needed", True)
+        address = self.recv_message()
         new_block = dad_block.make_sub_block((folder_name + self.user_name), self.get_next_prime(),
-                                             dad_block.block_name, networker.answer)
-        networker.answer = new_block
+                                             dad_block.block_name, address)
         self.update_dad_block(dad_block)
         print("create_folder block ", new_block)
-        self.protocol_message(f'update${self.user_name}', True)  #
+        self.protocol_message(f'update${self.user_name}', True)
         if self.recv_message().decode() == "send block":  # updates db if folder is gen's child
             if self.block.block_name.__contains__("gen_"):
                 self.protocol_message(pickle.dumps(self.block), False)
         self.dump_block(new_block)
         print("Folder created")
         return new_block
+
+    # def create_folder(self, dad_block, folder_name, networker):  # Need to update gen in db and file if gen updated
+    #     networker.get_to_work("open address needed", True, self.master_address, self)  # address from server
+    #     print(networker.answer)
+    #
+    #     new_block = dad_block.make_sub_block((folder_name + self.user_name), self.get_next_prime(),
+    #                                          dad_block.block_name, networker.answer)
+    #     networker.answer = new_block
+    #     self.update_dad_block(dad_block)
+    #     print("create_folder block ", new_block)
+    #     self.protocol_message(f'update${self.user_name}', True)  #
+    #     if self.recv_message().decode() == "send block":  # updates db if folder is gen's child
+    #         if self.block.block_name.__contains__("gen_"):
+    #             self.protocol_message(pickle.dumps(self.block), False)
+    #     self.dump_block(new_block)
+    #     print("Folder created")
+    #     return new_block
 
     def check_for_answer(self):
         pass
@@ -106,19 +121,29 @@ class User:
         print(block.block_name, "dumped at ", os.path.join(self.dir_path, block.block_name))
         file.close()
 
-    def load_block(self, block_name, networker=0, address=0):  # Here gives networker work instead of load itself.
-        if "gen_" in block_name:
-            if self.check_my_block(block_name):
-                file = open(os.path.join(self.dir_path, block_name), 'rb')
-                block = pickle.load(file)
-                print(block.block_name, "loaded")
-                file.close()
-                return block
-            else:
-                print("Not your file to view")
-                return
-        print("networker got work ", "send block " + block_name, " ", address)
-        networker.get_to_work("send block " + block_name, address, self)
+    def load_block(self, block_name, address=0):  # Address curr useless, when seperate pc's will be needed.
+        if self.check_my_block(block_name):
+            file = open(os.path.join(self.dir_path, block_name), 'rb')
+            block = pickle.load(file)
+            print(block.block_name, "loaded")
+            file.close()
+            return block
+        else:
+            print("Not your file to view")
+
+    # def load_block(self, block_name, networker=0, address=0):  # Here gives networker work instead of load itself.
+    #     if "gen_" in block_name:
+    #         if self.check_my_block(block_name):
+    #             file = open(os.path.join(self.dir_path, block_name), 'rb')
+    #             block = pickle.load(file)
+    #             print(block.block_name, "loaded")
+    #             file.close()
+    #             return block
+    #         else:
+    #             print("Not your file to view")
+    #             return
+    #     print("networker got work ", "send block " + block_name, " ", address)
+    #     networker.get_to_work("send block " + block_name, address, self)
 
     def check_my_block(self, block_name):  # Check to see if username matches the block selected
         try:
