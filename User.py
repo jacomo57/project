@@ -4,8 +4,6 @@ import pickle
 import os
 from GUI import Toplevel1 as GUI
 import tkinter as tk
-from UserServer import UserServer
-from Networker import Networker
 
 
 def main():
@@ -23,13 +21,14 @@ class User:
         self.user_name = 0
         self.block = None
         self.port = mem.port
-        self.master_address = ('192.168.0.116', self.port)
+        self.master_address = (mem.master_ip, self.port)
         self.my_socket = 0
         self.pre_len = mem.pre_len
         self.dir_path = mem.path_used
         self.make_dir_path()
         self.gui = None
         self.curr_address = 0
+        self.block_list = []
 
     def start_gui(self):
         root = tk.Tk()
@@ -42,13 +41,6 @@ class User:
         self.start_gui()
         self.my_socket.close()
         return
-
-    def make_userserver(self):
-        self.hostname = socket.gethostname()
-        self.local_ip = socket.gethostbyname(self.hostname)
-        self.protocol_message(self.local_ip, True)
-        yes = self.recv_message()
-        print(yes)
 
     def exit_program(self):
         self.protocol_message("exit", True)
@@ -63,6 +55,7 @@ class User:
         address = self.recv_message()
         new_block = dad_block.make_sub_block((folder_name + self.user_name), self.get_next_prime(),
                                              dad_block.block_name, address)
+        print("father name ", new_block.father_name)
         self.update_dad_block(dad_block)
         print("create_folder block ", new_block)
         self.protocol_message(f'update${self.user_name}', True)
@@ -72,26 +65,6 @@ class User:
         self.dump_block(new_block)
         print("Folder created")
         return new_block
-
-    # def create_folder(self, dad_block, folder_name, networker):  # Need to update gen in db and file if gen updated
-    #     networker.get_to_work("open address needed", True, self.master_address, self)  # address from server
-    #     print(networker.answer)
-    #
-    #     new_block = dad_block.make_sub_block((folder_name + self.user_name), self.get_next_prime(),
-    #                                          dad_block.block_name, networker.answer)
-    #     networker.answer = new_block
-    #     self.update_dad_block(dad_block)
-    #     print("create_folder block ", new_block)
-    #     self.protocol_message(f'update${self.user_name}', True)  #
-    #     if self.recv_message().decode() == "send block":  # updates db if folder is gen's child
-    #         if self.block.block_name.__contains__("gen_"):
-    #             self.protocol_message(pickle.dumps(self.block), False)
-    #     self.dump_block(new_block)
-    #     print("Folder created")
-    #     return new_block
-
-    def check_for_answer(self):
-        pass
 
     def create_file(self, dad_block, file_name, pickled_file):
         self.protocol_message("open address needed", True)
@@ -112,11 +85,8 @@ class User:
         os.remove(os.path.join(self.dir_path, block.block_name))
         self.dump_block(block)
 
-    def dump_block(self, block, username=0):
-        if username != 0:
-            file = open(os.path.join(self.dir_path, block.block_name), 'ab')
-        else:
-            file = open(os.path.join(self.dir_path, block.block_name), 'ab')
+    def dump_block(self, block):
+        file = open(os.path.join(self.dir_path, block.block_name), 'ab')
         pickle.dump(block, file)
         print(block.block_name, "dumped at ", os.path.join(self.dir_path, block.block_name))
         file.close()
@@ -130,20 +100,6 @@ class User:
             return block
         else:
             print("Not your file to view")
-
-    # def load_block(self, block_name, networker=0, address=0):  # Here gives networker work instead of load itself.
-    #     if "gen_" in block_name:
-    #         if self.check_my_block(block_name):
-    #             file = open(os.path.join(self.dir_path, block_name), 'rb')
-    #             block = pickle.load(file)
-    #             print(block.block_name, "loaded")
-    #             file.close()
-    #             return block
-    #         else:
-    #             print("Not your file to view")
-    #             return
-    #     print("networker got work ", "send block " + block_name, " ", address)
-    #     networker.get_to_work("send block " + block_name, address, self)
 
     def check_my_block(self, block_name):  # Check to see if username matches the block selected
         try:
@@ -162,7 +118,6 @@ class User:
         except OSError as error:
             print(error)
         print(f'Directory is in {self.dir_path}')
-        return self.dir_path
 
     def connect(self, address):
         print("In connect")
@@ -172,14 +127,11 @@ class User:
         print("Connection established")
 
     def log_in(self, username):
-        while True:
-            if self.verify_log_in(username):
-                self.user_name = username
-                return True
-                break
-            else:
-                print("One or more credentials are incorrect, please try again.")
-            break
+        if self.verify_log_in(username):
+            self.user_name = username
+            return True
+        else:
+            print("One or more credentials are incorrect, please try again.")
         return False
 
     def verify_log_in(self, username):
@@ -213,7 +165,7 @@ class User:
         if self.is_pickle_stream(gen):
             gen = pickle.loads(gen)
             self.block = gen
-            self.dump_block(gen, username)
+            self.dump_block(gen)
             print(f'User {username} created successfully')
             return True
         else:
@@ -231,11 +183,12 @@ class User:
     def traverse(self, child_name, address=0):  # This + load_block will need update when it's separate computers.
         block_to_traverse = self.load_block(child_name, address)  # Address curr useless till seperate pc's.
         print(block_to_traverse)
-        try:
-            for child in block_to_traverse.children:
+        self.block_list.append(block_to_traverse)
+        for child in block_to_traverse.children:
+            try:
                 self.traverse(child[0], child[1])
-        except:
-            print("Error: load block returned none")
+            except:
+                print("Error: load block returned none")
 
     @staticmethod
     def make_prime_array(lower, upper):

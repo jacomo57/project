@@ -10,7 +10,7 @@ import random
 def main():
     server = Server(socket.socket(socket.AF_INET, socket.SOCK_STREAM))
     addresses_to_send = ["address1", "address2", "address3"]
-    server.addresses_to_send = addresses_to_send
+    server.ports_online = addresses_to_send
     server.bind()
     server.main_loop()
 
@@ -30,7 +30,7 @@ class Server:
 
     def main_loop(self):
         while True:
-            print("While start")
+            print("Clients connected: ", self.ports_online)
             rlist, wlist, xlist = select.select([self.ser_socket] + self.open_client_sockets, [], [])
             for current_socket in rlist:
                 if current_socket is self.ser_socket:
@@ -42,9 +42,6 @@ class Server:
                     print(type(data))
                     if data == "exit":
                         self.open_client_sockets.remove(current_socket)
-                        for port_plus_socket in self.ports_online:
-                            if port_plus_socket[-1] == current_socket:
-                                self.ports_online.remove(port_plus_socket)
                         print("Connection with client closed")
                         self.protocol_message("Connection closed", True, current_socket)
                     else:
@@ -95,29 +92,11 @@ class Server:
     def send_next_address(self, curr_socket):  # Moves first address to last and sends to user.
         to_send = self.ports_online.pop(0)
         self.ports_online.append(to_send)
-        self.protocol_message(pickle.dumps(to_send), True, curr_socket)
+        self.protocol_message(pickle.dumps(to_send), False, curr_socket)
 
     def get_port(self, ip):
-        while True:
-            print("get_port while")
-            rnd_port = random.randint(1024, 65535)
-            if self.ports_online:
-                print("in if")
-                for pair in self.ports_online:
-                    print(pair)
-                    print(ip)
-                    if ip is not pair[1]:
-                        to_save = [self.mem.userserver_port, ip]
-                        print(to_save)
-                        self.ports_online.append(to_save)
-                        return self.mem.userserver_port
-                    elif ip is pair[1]:
-                        return self.mem.userserver_port
-            elif not self.ports_online:  # if empty
-                to_save = [self.mem.userserver_port, ip]
-                print(to_save)
-                self.ports_online.append(to_save)
-                return self.mem.userserver_port
+        to_save = [self.mem.userserver_port, ip]
+        self.ports_online.append(to_save)
 
     def user_to_db(self, data, curr_socket):
         name = data[1]

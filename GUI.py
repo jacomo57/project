@@ -7,7 +7,7 @@ from tkinter.constants import *
 
 # Support code for Balloon Help (also called tooltips).
 # derived from http://code.activestate.com/recipes/576688-tooltip-for-tkinter/
-from time import time, localtime, strftime
+from time import time
 
 from BlockFolder import BlockFolder
 from BlockFile import BlockFile
@@ -260,77 +260,33 @@ class Toplevel1:
 
         self.counter = 0
         self.on_tv = []
-        self.gen_block = self.user.load_block("gen_" + self.user.user_name)
-        self.curr_block = self.gen_block
         self.show_in_tv(self.user.load_block("gen_" + self.user.user_name), 0)
 
         self.homepage.tkraise()
 
-    def show_gen_in_tv(self, gen):
-        to_show = [0, gen.block_name, len(gen.children)]
-        self.treeview.insert(parent='', index='end', iid=self.counter, text='Folder', values=to_show)
-
     def show_in_tv(self, block, dad_name):
-        if not dad_name == 0:
-            for block_shown in self.on_tv[0]:  # Block name shown
-                if block.block_name == block_shown:
-                    return
-        to_show = [block.block_name, dad_name, len(block.children)]
-        if isinstance(block, BlockFolder):
-            self.treeview.insert(parent='', index='end', iid=self.counter, text='Folder',values=to_show)
-        elif isinstance(block, BlockFile):
-            self.treeview.insert(parent='', index='end', iid=self.counter, text='File',values=to_show)
-        counter = 0
-        if not dad_name == 0:
-            for block_shown in self.on_tv[0]:  # Block name shown
-                if dad_name == block_shown:  # If true needs update
-                    self.on_tv[counter][-1] = self.on_tv[counter][-1] + 1
-                    self.update_record(counter, values=self.on_tv[counter])
-                    print("Treeview record updated")
-                counter += 1
-        self.on_tv.append(to_show)
-        self.counter += 1
-
-    # def show_in_tv(self):  # use networker answers
-    #     dad_block = self.networker.answer
-    #     print("dad_block ", dad_block)
-    #     new_block = self.next_networker.answer
-    #     print("new_block ", new_block)
-    #     dad_name = dad_block.block_name
-    #     if not dad_name == 0:  # IF BLOCK SHOWN
-    #         for block_shown in self.on_tv:  # Block name shown
-    #             if new_block.block_name == block_shown[0]:
-    #                 return
-    #
-    #     for child in dad_block.children:  # metadata = [child_name, address, dad_name]
-    #         for block_shown in self.on_tv:  # SHOWS CHILDREN FROM METADATA
-    #             if child[0] == block_shown[0]:  # Means child is on tv
-    #                 break
-    #             else:
-    #                 to_show = [child[0], dad_name, len(new_block.children)]
-    #                 if isinstance(new_block, BlockFolder):
-    #                     self.treeview.insert(parent='', index='end', iid=self.counter, text='Folder', values=to_show)
-    #                 elif isinstance(new_block, BlockFile):
-    #                     self.treeview.insert(parent='', index='end', iid=self.counter, text='File', values=to_show)
-    #
-    #     counter = 0  # UPDATE DAD
-    #     if not dad_name == 0:
-    #         for block_shown in self.on_tv:  # Block name shown
-    #             if dad_name == block_shown[0]:  # If true needs update
-    #                 self.on_tv[counter][-1] = self.on_tv[counter][-1] + 1  # updates children count on the list
-    #                 self.update_record(counter, values=self.on_tv[counter])  # updates children count on treeview
-    #                 print("Treeview record updated")
-    #             counter += 1
-    #     if to_show:
-    #         self.on_tv.append(to_show)
-    #     self.counter += 1
-
-    # def make_folder_clicked(self):
-    #     new_name = simpledialog.askstring(title="New Folder Name", prompt="Enter the new folder's name:")
-    #     dad_name = simpledialog.askstring(title="Father Name", prompt="Enter the father's name:")
-    #     dad_block = self.user.load_block(dad_name)
-    #     new_block = self.user.create_folder(dad_block, new_name)
-    #     self.show_in_tv(new_block, dad_name)
+        shown = False
+        if self.on_tv:
+            for block_shown in self.on_tv:
+                if block.block_name == block_shown[0]:
+                    shown = True
+        if not shown:
+            to_show = [block.block_name, dad_name, len(block.children)]
+            if isinstance(block, BlockFolder):
+                self.treeview.insert(parent='', index='end', iid=self.counter, text='Folder', values=to_show)
+            elif isinstance(block, BlockFile):
+                self.treeview.insert(parent='', index='end', iid=self.counter, text='File', values=to_show)
+            counter = 0
+            if not dad_name == 0:
+                for block_shown in self.on_tv:  # Block name shown
+                    if dad_name == block_shown[0]:  # If true needs update
+                        self.on_tv[counter][-1] = self.on_tv[counter][-1] + 1
+                        self.update_record(counter, values=self.on_tv[counter])
+                        print("Treeview record updated")
+                    counter += 1
+            self.on_tv.append(to_show)
+            print(self.on_tv)
+            self.counter += 1
 
     def update_record(self, id, values):
         self.treeview.item(id, text="Folder", values=values)
@@ -338,145 +294,66 @@ class Toplevel1:
     def make_folder_clicked(self):
         new_name = simpledialog.askstring(title="New Folder Name", prompt="Enter the new folder's name:")
         dad_name = simpledialog.askstring(title="Father Name", prompt="Enter the father's name:")
-        dad_block = self.user.load_block(dad_name)
-        new_block = self.user.create_folder(dad_block, new_name)
-        self.show_in_tv(new_block, dad_name)
-
-    # def make_folder_clicked(self):
-    #     new_name = simpledialog.askstring(title="New Folder Name", prompt="Enter the new folder's name:")
-    #     dad_name = simpledialog.askstring(title="Father Name", prompt="Enter the father's name:")
-    #     # address = 0
-    #     # for child in self.curr_block.children:
-    #     #     if child[0] == new_name:
-    #     #         address = child[1]
-    #     address = self.curr_block.address
-    #     print("address ", address)
-    #     self.begin_create_load_block(dad_name, new_name, address)
-    #     self.root.after(20000, self.show_in_tv)  # blocks will be in networker and next_networker??
-    #     # Timeout 2400
-
-    def begin_create_load_block(self, block_name, new_name, address):
-        print("in begin load")
-        if "gen_" in block_name:
-            self.networker.answer = self.user.load_block(block_name)
-        else:
-            self.user.load_block(block_name, self.networker, address)  # Will give networker work
-        self.root.after(1200, lambda: self.end_load_block_and_begin_create_folder(new_name))  #
-
-    def end_load_block_and_begin_create_folder(self, new_name):
-        print("in end load begin create")
-        print("networker answer ", self.networker.answer)
-        if self.networker.answer is not None:
-            self.user.create_folder(self.networker.answer, new_name, self.next_networker)
-
-    # def check_answer(self):
+        if dad_name and new_name:
+            dad_block = self.user.load_block(dad_name)
+            new_block = self.user.create_folder(dad_block, new_name)
+            self.show_in_tv(new_block, dad_name)
 
     def get_file_clicked(self):
         file_name = simpledialog.askstring(title="Block File name", prompt="Enter the block-file's name:")
-        self.user.dump_block(file_name)
+        if file_name:
+            self.user.dump_block(file_name)
 
     def make_file_clicked(self):
         file_name = filedialog.askopenfilename()
-        file = open(file_name, 'rb')
-        pickled_file = pickle.load(file)
-        file.close()
-        dad_name = simpledialog.askstring(title="Father name", prompt="Enter the father's name:")
-        dad_block = self.user.load_block(dad_name)
-        file_name = file_name.split("/")[-1]
-        new_block = self.user.create_file(dad_block, file_name, pickled_file)
-        self.show_in_tv(new_block, dad_name)
+        if file_name:
+            file = open(file_name, 'rb')
+            pickled_file = pickle.load(file)
+            file.close()
+            dad_name = simpledialog.askstring(title="Father name", prompt="Enter the father's name:")
+            if dad_name:
+                dad_block = self.user.load_block(dad_name)
+                file_name = file_name.split("/")[-1]
+                new_block = self.user.create_file(dad_block, file_name, pickled_file)
+                self.show_in_tv(new_block, dad_name)
 
     def traverse_button_clicked(self):
         user_inp = simpledialog.askstring(title="Block to Traverse", prompt="Enter what block to traverse:")
-        self.user.traverse(user_inp)
+        if user_inp:
+            self.user.traverse(user_inp)
+            print(self.user.block_list)
+            for block in self.user.block_list:
+                print(block)
+                self.show_in_tv(block, block.father_name)
 
     def load_button_clicked(self):
         user_inp = simpledialog.askstring(title="Block to Load", prompt="Enter what block to load:")
-        if "gen_" in user_inp:
-            block = self.user.load_block(user_inp, True)
-            print(block)
-        else:
-            block = self.user.load_block(user_inp)
-            print(block)
+        if user_inp:
+            if "gen_" in user_inp:
+                block = self.user.load_block(user_inp)
+                self.show_in_tv(block, block.father_name)
+                print(block)
+            else:
+                block = self.user.load_block(user_inp)
+                self.show_in_tv(block, block.father_name)
+                print(block)
 
     def sign_up_clicked(self):
         name = self.username_entry_signup.get()
-        if name == self.curr_name:
-            print("same name")
-        else:
-            pos = self.user.create_user(name)
-            if pos:
-                self.make_homepage()
-                self.user.make_userserver()
-                return
-        self.curr_name = name
+        pos = self.user.create_user(name)
+        if pos:
+            self.make_homepage()
+            return
         print("Name taken")
 
-    def login_clicked(self):  # Needs to get file for block and stuff
+    def login_clicked(self):
         name = self.username_entry.get()
         pos = self.user.log_in(name)
         if pos:
             self.make_homepage()
-            self.user.make_userserver()
 
     def exit_program(self):
         if self.user.exit_program():
             self.root.destroy()
             return
         print("An error occurred while exiting")
-
-
-class ToolTip(tk.Toplevel):
-    """ Provides a ToolTip widget for Tkinter. """
-
-    def __init__(self, wdgt, tooltip_font, msg=None, msgFunc=None, delay=0.5, follow=True):
-        self.wdgt = wdgt
-        self.parent = self.wdgt.master
-        tk.Toplevel.__init__(self, self.parent, bg='black', padx=1, pady=1)
-        self.withdraw()
-        self.overrideredirect(True)
-        self.msgVar = tk.StringVar()
-        if msg is None:
-            self.msgVar.set('No message provided')
-        else:
-            self.msgVar.set(msg)
-        self.msgFunc = msgFunc
-        self.delay = delay
-        self.follow = follow
-        self.visible = 0
-        self.lastMotion = 0
-        tk.Message(self, textvariable=self.msgVar, bg='#FFFFDD',
-                   font=tooltip_font,
-                   aspect=1000).grid()
-        self.wdgt.bind('<Enter>', self.spawn, '+')
-        self.wdgt.bind('<Leave>', self.hide, '+')
-        self.wdgt.bind('<Motion>', self.move, '+')
-
-    def spawn(self, event=None):
-        self.visible = 1
-        self.after(int(self.delay * 1000), self.show)
-
-    def show(self):
-        if self.visible == 1 and time() - self.lastMotion > self.delay:
-            self.visible = 2
-        if self.visible == 2:
-            self.deiconify()
-
-    def move(self, event):
-        self.lastMotion = time()
-        if self.follow is False:
-            self.withdraw()
-            self.visible = 1
-        self.geometry('+%i+%i' % (event.x_root + 20, event.y_root - 10))
-        try:
-            self.msgVar.set(self.msgFunc())
-        except:
-            pass
-        self.after(int(self.delay * 1000), self.show)
-
-    def hide(self, event=None):
-        self.visible = 0
-        self.withdraw()
-
-    def update(self, msg):
-        self.msgVar.set(msg)

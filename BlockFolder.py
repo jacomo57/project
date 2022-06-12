@@ -5,10 +5,10 @@ from BlockFile import BlockFile
 class BlockFolder(Block):
     def __init__(self, block_name, prev_hash=None, prime=None, father_name=0, address=0):
         if prev_hash:
-            super().__init__(block_name, prev_hash, prime)
+            super().__init__(block_name, prev_hash, prime, father_name)
         else:
             super().__init__(block_name)
-        self.address = address  # Next block's address
+        self.address = address
         self.children = []
 
     def make_sub_block(self, block_name, prime, father_name, address):

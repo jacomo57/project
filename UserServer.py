@@ -2,7 +2,6 @@ import os
 import select
 import socket
 from Globals import Globals
-from BlockFolder import BlockFolder
 import pickle
 
 
@@ -37,50 +36,39 @@ class UserServer:
                     (new_socket, address) = self.ser_socket.accept()
                     self.open_client_sockets.append(new_socket)
                 else:
-                    data = self.recv_message(current_socket).decode()
+                    data = self.recv_message().decode()
                     if data == "exit":
                         self.open_client_sockets.remove(current_socket)
                         print("Connection with client closed")
-                        self.protocol_message("Connection closed", True, current_socket)
+                        self.protocol_message("Connection closed", True)
                     else:
                         print("Received data")
                         print("data: ", data)
                         if "send block" in data:  # Example: send block test1gg
                             data = data.split()
-                            self.send_block(data[-1], current_socket)
+                            self.send_block(data[-1])
                         elif "save block " in data:  # Example: save block. Next msg: *block*
                             data = data.split()
-                            self.save_block(data, current_socket)
-                        elif data == "open address needed":
-                            self.send_next_address(current_socket)
-            self.protocol_message("I am userserver", True, self.my_socket)
-            self.ports_online = self.recv_message(self.my_socket)
-            self.ports_online = pickle.loads(self.ports_online)
-            print("ports online sent ", self.ports_online)
-
-    def send_next_address(self, curr_socket):  # Moves first address to last and sends to user.
-        to_send = self.ports_online.pop(0)
-        self.ports_online.append(to_send)
-        self.protocol_message(pickle.dumps(to_send), True, curr_socket)
+                            self.save_block(data)
 
     def connect_to_master(self):
-        print("in connect to master")
-        self.my_socket.connect(('127.0.0.1', self.master_port))
+        self.my_socket.connect((self.master_ip, self.master_port))
         print("Connection established")
-        self.protocol_message("I am userserver", True, self.my_socket)
-        self.ports_online = pickle.loads(self.recv_message(self.my_socket))
-        print(self.ports_online)
+        hostname = socket.gethostname()
+        local_ip = socket.gethostbyname(hostname)
+        self.protocol_message(local_ip, True)
+        print(self.recv_message())
 
-    def send_block(self, block_name, curr_socket):
+    def send_block(self, block_name):
         file = open(os.path.join(self.dir_path, block_name), 'rb')
         block = pickle.loads(file)
         print(block.block_name, "loaded")
         file.close()
-        self.protocol_message(pickle.dump(block), False, curr_socket)
+        self.protocol_message(pickle.dump(block), False)
         return block
 
-    def save_block(self, curr_socket):
-        self.protocol_message("send block", True, curr_socket)
+    def save_block(self):
+        self.protocol_message("send block", True)
         block = self.recv_message()
         if self.is_pickle_stream(block):
             block = pickle.loads(block)
@@ -122,42 +110,56 @@ class UserServer:
     def send_waitint_messages(self):
         for message in self.messages_to_send:
             (curr_socket, data) = message
-            self.protocol_message(data, True, curr_socket)
+            self.protocol_message(data, True)
             self.messages_to_send.remove(message)
 
-    @staticmethod
-    def protocol_message(message, is_text, curr_socket):
+    def protocol_message(self, message, is_text):
         length_msg = len(message)
         length_msg_str = str(length_msg)
 
         length_length = len(length_msg_str)
         length_length_str = str(length_length).zfill(2)
 
-        curr_socket.send(length_length_str.encode())
+        self.my_socket.send(length_length_str.encode())
 
-        curr_socket.send(length_msg_str.encode())
+        self.my_socket.send(length_msg_str.encode())
 
         if is_text:
-            curr_socket.send(message.encode())
-            print("protocol_message: " + message)
+            self.my_socket.send(message.encode())
         else:
-            curr_socket.send(message)
+            self.my_socket.send(message)
 
-    @staticmethod
-    def recv_message(curr_socket):
-        print("in recv")
-        length_length_str = curr_socket.recv(2)
+    def recv_message(self):
+        length_length_str = ""
+        try:
+            length_length_str = self.my_socket.recv(2)
+        except socket.timeout as e:
+            print("Receive timeout occurred")
+
         if length_length_str == "":
-            pass
+            return None
         length_length_str = length_length_str.decode()
         length_length = int(length_length_str)
 
-        msg_length_str = curr_socket.recv(length_length).decode()
+        msg_length_str = ""
+        try:
+            msg_length_str = self.my_socket.recv(length_length).decode()
+        except socket.timeout as e:
+            print("Receive timeout occurred")
+
+        if msg_length_str == "":
+            return None
         msg_length = int(msg_length_str)
 
-        message = curr_socket.recv(msg_length)
-        while len(message) < msg_length:
-            message += curr_socket.recv(int(message) - len(message))
+        message = ""
+        try:
+            message = self.my_socket.recv(int(msg_length))
+        except socket.timeout as e:
+            print("Receive timeout occurred")
+        if message == "":
+            return None
+        while len(message) < int(msg_length):
+            message += self.my_socket.recv(int(message) - len(message))
         return message
 
 

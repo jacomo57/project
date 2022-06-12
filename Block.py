@@ -2,13 +2,6 @@ import datetime
 import hashlib
 
 
-def main():
-    gen = Block()
-    print(gen)
-    block2 = Block("This is block2", gen.get_hash())
-    print(block2)
-
-
 class Block:
     def __init__(self, block_name, prev_hash=0, my_prime=2, father_name=0, address=0):
         self.prev_hash = prev_hash
@@ -28,7 +21,6 @@ class Block:
         else:
             return self.prev_hash * self.my_prime
 
-
     @staticmethod
     def get_time_stamp():
         return datetime.datetime.now()
@@ -38,7 +30,3 @@ class Block:
 
     def __repr__(self):
         return f"Block Info - {self}"
-
-
-if __name__ == '__main__':
-    main()
