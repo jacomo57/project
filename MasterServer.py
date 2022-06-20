@@ -1,22 +1,20 @@
+import os
 import select
 import socket
 from Globals import Globals
 from Database import Database
 from BlockFolder import BlockFolder
 import pickle
-import random
 
 
 def main():
     server = Server(socket.socket(socket.AF_INET, socket.SOCK_STREAM))
-    addresses_to_send = ["address1", "address2", "address3"]
-    server.ports_online = addresses_to_send
     server.bind()
     server.main_loop()
 
 
 class Server:
-    def __init__(self, ser_socket, port=0, pre_len=0):
+    def __init__(self, ser_socket):
         self.mem = Globals()
         self.port = self.mem.port
         self.ser_socket = ser_socket
@@ -29,8 +27,9 @@ class Server:
         self.db = Database()
 
     def main_loop(self):
+        self.make_dir_path()
         while True:
-            print("Clients connected: ", self.ports_online)
+            print(self.ports_online)
             rlist, wlist, xlist = select.select([self.ser_socket] + self.open_client_sockets, [], [])
             for current_socket in rlist:
                 if current_socket is self.ser_socket:
@@ -53,19 +52,95 @@ class Server:
                         elif data.__contains__("."):
                             self.get_port(data)
                             self.protocol_message("Yes", True, current_socket)
-                        # elif "send port" in data:
-                        #     data = data.split()
-                        #     self.get_port(data[-1])
                         elif data.__contains__("login"):
                             data = data.split("$")
                             self.verify_log_in(data, current_socket)
                         elif data.__contains__("update"):
                             data = data.split("$")
                             self.update_gen(data, current_socket)
+                        elif data.__contains__("load block"):
+                            data = data.split()
+                            self.load_block(data[-1], current_socket)
+                        elif data.__contains__("save folder"):
+                            data = data.split()
+                            self.save_folder(data, current_socket)
+                        elif data.__contains__("save file"):
+                            data = data.split()
+                            self.save_file(data, current_socket)
+                        elif data == "upto":
+                            self.update_dad_block(current_socket)
+                        elif data.__contains__("get file"):
+                            data = data.split()
+                            self.get_file(data, current_socket)
                         elif data == "open address needed":
                             self.send_next_address(current_socket)
-                        elif data == "I am userserver":
-                            self.protocol_message(pickle.dumps(self.ports_online), False, current_socket)
+
+    def get_file(self, data, curr_socket):
+        file_name = data[-1]
+        self.load_block(file_name, curr_socket)
+
+    def update_dad_block(self, curr_socket):  # Removes the block and resaves updated version.
+        self.protocol_message("send block", True,curr_socket)
+        block = pickle.loads(self.recv_message(curr_socket))
+        os.remove(os.path.join(self.dir_path, block.block_name))
+        self.dump_block(block)
+        self.protocol_message("yes", True, curr_socket)
+
+    def save_folder(self, data, curr_socket):
+        block_name = data[2]
+        prime = int(data[3])
+        father_name = data[4]
+        address = data[5]
+        dad_block = self.load_block_server(father_name)
+        new_block = dad_block.make_sub_block(block_name, prime, father_name, address)
+        print(new_block)
+        self.dump_block(new_block)
+        self.protocol_message(pickle.dumps(new_block), False, curr_socket)
+
+    def save_file(self, data, curr_socket):
+        block_name = data[2]
+        prime = int(data[3])
+        father_name = data[4]
+        address = data[5]
+        self.protocol_message("send file", True, curr_socket)
+        pickled_file = pickle.loads(self.recv_message(curr_socket))
+        dad_block = self.load_block_server(father_name)
+        new_block = dad_block.make_sub_file(block_name, prime, pickled_file, dad_block.block_name, address)
+        self.dump_block(new_block)
+        self.protocol_message(pickle.dumps(new_block), False, curr_socket)
+
+    def load_block_server(self, block_name):
+        try:
+            file = open(os.path.join(self.dir_path, block_name), 'rb')
+            block = pickle.load(file)
+            print(block.block_name, "loaded")
+            file.close()
+            return block
+        except:
+            return False
+
+    def dump_block(self, block):
+        file = open(os.path.join(self.dir_path, block.block_name), 'ab')
+        pickle.dump(block, file)
+        print(block.block_name, "dumped at ", os.path.join(self.dir_path, block.block_name))
+        file.close()
+
+    def make_dir_path(self):
+        try:
+            os.mkdir(self.dir_path)
+        except OSError as error:
+            print(error)
+        print(f'Directory is in {self.dir_path}')
+
+    def load_block(self, block_name, curr_socket):
+        try:
+            file = open(os.path.join(self.dir_path, block_name), 'rb')
+            block = pickle.load(file)
+            print(block.block_name, "loaded")
+            file.close()
+            self.protocol_message(pickle.dumps(block), False, curr_socket)
+        except:
+            self.protocol_message("File doesn't exist", True, curr_socket)
 
     def update_gen(self, data, current_socket):
         username = data[-1]
@@ -101,11 +176,12 @@ class Server:
     def user_to_db(self, data, curr_socket):
         name = data[1]
         ip = data[-1]
-        user_port = self.get_port(ip)
+        user_port = self.mem.userserver_port
         if self.db.verify_new_name(name):  # Create block for user, send to user save to db.
             block = BlockFolder(name)
             self.db.insert_user_data(name, block, ip, user_port)
             print("Inserted to db")
+            self.dump_block(block)
             self.protocol_message(pickle.dumps(block), False, curr_socket)
         else:
             self.protocol_message("Name is already in use, please try another", True, curr_socket)
@@ -114,12 +190,6 @@ class Server:
         self.ser_socket.bind(('0.0.0.0', self.port))
         print("Waiting for clients")
         self.ser_socket.listen(5)
-
-    def send_waitint_messages(self):
-        for message in self.messages_to_send:
-            (curr_socket, data) = message
-            self.protocol_message(data, True, curr_socket)
-            self.messages_to_send.remove(message)
 
     @staticmethod
     def protocol_message(message, is_text, curr_socket):

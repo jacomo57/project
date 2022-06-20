@@ -4,7 +4,7 @@ import pickle
 
 def main():
     db = Database()
-    db.delete_all_users()
+    db.create_users_table()
 
 
 class Database:  # (id, name, block, ip, port)
@@ -48,7 +48,7 @@ class Database:  # (id, name, block, ip, port)
 
     def create_users_table(self):
         self.cursor.execute("CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY,name VARCHAR(255), "
-                            "block MEDIUMBLOB, userserver_ip VARCHAR(255), userserver_port VARCHAR(255)")
+                            "block MEDIUMBLOB, ip VARCHAR(255), port VARCHAR(255))")
 
     def insert_user_data(self, username, block, ip, port):
         sql_command = "INSERT INTO users (name, block, ip, port) VALUES (%s, %s, %s, %s)"

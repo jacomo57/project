@@ -20,7 +20,7 @@ class UserServer:
         self.ser_socket = ser_socket
         self.pre_len = mem.pre_len
         self.cli_socket = None
-        self.my_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.master_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.messages_to_send = []
         self.open_client_sockets = []
         self.ports_online = []
@@ -36,44 +36,103 @@ class UserServer:
                     (new_socket, address) = self.ser_socket.accept()
                     self.open_client_sockets.append(new_socket)
                 else:
-                    data = self.recv_message().decode()
+                    data = self.recv_message(current_socket).decode()
                     if data == "exit":
                         self.open_client_sockets.remove(current_socket)
                         print("Connection with client closed")
-                        self.protocol_message("Connection closed", True)
+                        self.protocol_message("Connection closed", True, current_socket)
                     else:
                         print("Received data")
                         print("data: ", data)
-                        if "send block" in data:  # Example: send block test1gg
+                        if data.__contains__("load block"):
                             data = data.split()
-                            self.send_block(data[-1])
-                        elif "save block " in data:  # Example: save block. Next msg: *block*
+                            self.load_block(data[-1], current_socket)
+                        elif data.__contains__("save folder"):
                             data = data.split()
-                            self.save_block(data)
+                            self.save_folder(data, current_socket)
+                        elif data.__contains__("save file"):
+                            data = data.split()
+                            self.save_file(data, current_socket)
+                        elif data == "upto":
+                            self.update_dad_block(current_socket)
+                        elif data.__contains__("get file"):
+                            data = data.split()
+                            self.get_file(data, current_socket)
 
     def connect_to_master(self):
-        self.my_socket.connect((self.master_ip, self.master_port))
+        self.master_socket.connect((self.master_ip, self.master_port))
         print("Connection established")
         hostname = socket.gethostname()
         local_ip = socket.gethostbyname(hostname)
-        self.protocol_message(local_ip, True)
-        print(self.recv_message())
+        self.protocol_message(local_ip, True, self.master_socket)
+        print(self.recv_message(self.master_socket))
 
-    def send_block(self, block_name):
-        file = open(os.path.join(self.dir_path, block_name), 'rb')
-        block = pickle.loads(file)
-        print(block.block_name, "loaded")
+    def get_file(self, data, curr_socket):
+        file_name = data[-1]
+        self.load_block(file_name, curr_socket)
+
+    def update_dad_block(self, curr_socket):  # Removes the block and resaves updated version.
+        self.protocol_message("send block", True, curr_socket)
+        block = pickle.loads(self.recv_message(curr_socket))
+        os.remove(os.path.join(self.dir_path, block.block_name))
+        self.dump_block(block)
+        self.protocol_message("yes", True, curr_socket)
+
+    def save_folder(self, data, curr_socket):
+        block_name = data[2]
+        prime = int(data[3])
+        father_name = data[4]
+        address = data[5]
+        dad_block = self.load_block_server(father_name)
+        new_block = dad_block.make_sub_block(block_name, prime, father_name, address)
+        print(new_block)
+        self.dump_block(new_block)
+        self.protocol_message(pickle.dumps(new_block), False, curr_socket)
+
+    def save_file(self, data, curr_socket):
+        block_name = data[2]
+        prime = int(data[3])
+        father_name = data[4]
+        address = data[5]
+        self.protocol_message("send file", True, curr_socket)
+        pickled_file = pickle.loads(self.recv_message(curr_socket))
+        dad_block = self.load_block_server(father_name)
+        new_block = dad_block.make_sub_file(block_name, prime, pickled_file, dad_block.block_name, address)
+        self.dump_block(new_block)
+        self.protocol_message(pickle.dumps(new_block), False, curr_socket)
+
+    def load_block_server(self, block_name):
+        try:
+            file = open(os.path.join(self.dir_path, block_name), 'rb')
+            block = pickle.load(file)
+            print(block.block_name, "loaded")
+            file.close()
+            return block
+        except:
+            return False
+
+    def dump_block(self, block):
+        file = open(os.path.join(self.dir_path, block.block_name), 'ab')
+        pickle.dump(block, file)
+        print(block.block_name, "dumped at ", os.path.join(self.dir_path, block.block_name))
         file.close()
-        self.protocol_message(pickle.dump(block), False)
-        return block
 
-    def save_block(self):
-        self.protocol_message("send block", True)
-        block = self.recv_message()
-        if self.is_pickle_stream(block):
-            block = pickle.loads(block)
-            self.dump_block(block)
-            self.protocol_message(block.block_name, "dumped at ", os.path.join(self.dir_path, block.block_name))
+    def make_dir_path(self):
+        try:
+            os.mkdir(self.dir_path)
+        except OSError as error:
+            print(error)
+        print(f'Directory is in {self.dir_path}')
+
+    def load_block(self, block_name, curr_socket):
+        try:
+            file = open(os.path.join(self.dir_path, block_name), 'rb')
+            block = pickle.load(file)
+            print(block.block_name, "loaded")
+            file.close()
+            self.protocol_message(pickle.dumps(block), False, curr_socket)
+        except:
+            self.protocol_message("File doesn't exist", True, curr_socket)
 
     @staticmethod
     def is_pickle_stream(byte_obj):
@@ -83,83 +142,43 @@ class UserServer:
         except pickle.UnpicklingError:
             return False
 
-    def dump_block(self, block, username=0):
-        if username != 0:
-            file = open(os.path.join(self.dir_path, block.block_name), 'ab')
-        else:
-            file = open(os.path.join(self.dir_path, block.block_name), 'ab')
-        pickle.dump(block, file)
-        print(block.block_name, "dumped at ", os.path.join(self.dir_path, block.block_name))
-        file.close()
-
-    def load_block(self, block_name, address=0):  # Address curr useless, when seperate pc's will be needed.
-        if self.check_my_block(block_name):
-            file = open(os.path.join(self.dir_path, block_name), 'rb')
-            block = pickle.load(file)
-            print(block.block_name, "loaded")
-            file.close()
-            return block
-        else:
-            print("Not your file to view")
-
     def bind(self):
         self.ser_socket.bind(("0.0.0.0", self.my_port))
         print("Waiting for clients")
         self.ser_socket.listen(5)
 
-    def send_waitint_messages(self):
-        for message in self.messages_to_send:
-            (curr_socket, data) = message
-            self.protocol_message(data, True)
-            self.messages_to_send.remove(message)
-
-    def protocol_message(self, message, is_text):
+    @staticmethod
+    def protocol_message(message, is_text, curr_socket):
         length_msg = len(message)
         length_msg_str = str(length_msg)
 
         length_length = len(length_msg_str)
         length_length_str = str(length_length).zfill(2)
 
-        self.my_socket.send(length_length_str.encode())
+        curr_socket.send(length_length_str.encode())
 
-        self.my_socket.send(length_msg_str.encode())
+        curr_socket.send(length_msg_str.encode())
 
         if is_text:
-            self.my_socket.send(message.encode())
+            curr_socket.send(message.encode())
+            print("protocol_message: " + message)
         else:
-            self.my_socket.send(message)
+            curr_socket.send(message)
 
-    def recv_message(self):
-        length_length_str = ""
-        try:
-            length_length_str = self.my_socket.recv(2)
-        except socket.timeout as e:
-            print("Receive timeout occurred")
-
+    @staticmethod
+    def recv_message(curr_socket):
+        length_length_str = curr_socket.recv(2)
         if length_length_str == "":
-            return None
+            pass
         length_length_str = length_length_str.decode()
         length_length = int(length_length_str)
 
-        msg_length_str = ""
-        try:
-            msg_length_str = self.my_socket.recv(length_length).decode()
-        except socket.timeout as e:
-            print("Receive timeout occurred")
-
-        if msg_length_str == "":
-            return None
+        msg_length_str = curr_socket.recv(length_length).decode()
         msg_length = int(msg_length_str)
 
-        message = ""
-        try:
-            message = self.my_socket.recv(int(msg_length))
-        except socket.timeout as e:
-            print("Receive timeout occurred")
-        if message == "":
-            return None
-        while len(message) < int(msg_length):
-            message += self.my_socket.recv(int(message) - len(message))
+        message = curr_socket.recv(msg_length)
+        while len(message) < msg_length:
+            message += curr_socket.recv(int(message) - len(message))
         return message
 
 

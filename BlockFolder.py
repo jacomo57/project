@@ -18,7 +18,8 @@ class BlockFolder(Block):
 
     def make_sub_file(self, block_name, prime, pickeld_file, father_name, address=0):
         block = BlockFile(block_name, self.hash, prime, pickeld_file, father_name)
-        self.children.append(self.metadata(block_name, address, self.block_name))
+        self.children.append(self.metadata(("file_" + block_name), address, self.block_name))
+        print(self.children)
         return block
 
     def metadata(self, child_name, address, dad_name):  # When creating child, pass child name+address and save to self.children
@@ -26,4 +27,4 @@ class BlockFolder(Block):
         return metadata
 
     def __str__(self):
-        return f"Name: {self.block_name}, Prime: {self.my_prime}, Time Stamp: {self.timestamp}, {len(self.children)} children"
+        return f"Name: {self.block_name}, Prime: {self.my_prime}, Address: {self.address} Time Stamp: {self.timestamp}, {len(self.children)} children"

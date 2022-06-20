@@ -11,7 +11,6 @@ from time import time
 
 from BlockFolder import BlockFolder
 from BlockFile import BlockFile
-from Networker import Networker
 
 
 class Toplevel1:
@@ -46,8 +45,6 @@ class Toplevel1:
 
         self.root = root
         self.user = user
-        self.networker = Networker()
-        self.next_networker = Networker()
         self.curr_name = 0
 
         self.header = tk.Label(self.root)
@@ -271,10 +268,11 @@ class Toplevel1:
                 if block.block_name == block_shown[0]:
                     shown = True
         if not shown:
-            to_show = [block.block_name, dad_name, len(block.children)]
             if isinstance(block, BlockFolder):
+                to_show = [block.block_name, dad_name, len(block.children)]
                 self.treeview.insert(parent='', index='end', iid=self.counter, text='Folder', values=to_show)
             elif isinstance(block, BlockFile):
+                to_show = [block.block_name, dad_name, "No Children"]
                 self.treeview.insert(parent='', index='end', iid=self.counter, text='File', values=to_show)
             counter = 0
             if not dad_name == 0:
@@ -285,7 +283,6 @@ class Toplevel1:
                         print("Treeview record updated")
                     counter += 1
             self.on_tv.append(to_show)
-            print(self.on_tv)
             self.counter += 1
 
     def update_record(self, id, values):
@@ -302,7 +299,7 @@ class Toplevel1:
     def get_file_clicked(self):
         file_name = simpledialog.askstring(title="Block File name", prompt="Enter the block-file's name:")
         if file_name:
-            self.user.dump_block(file_name)
+            file = self.user.get_file(file_name)
 
     def make_file_clicked(self):
         file_name = filedialog.askopenfilename()

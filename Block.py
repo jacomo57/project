@@ -17,9 +17,9 @@ class Block:
 
     def get_hash(self, block_name):
         if self.prev_hash == 0:
-            return hashlib.sha256(block_name.encode()).hexdigest() * self.my_prime
+            return hashlib.sha256(block_name.encode()).hexdigest()
         else:
-            return self.prev_hash * self.my_prime
+            return self.prev_hash
 
     @staticmethod
     def get_time_stamp():
