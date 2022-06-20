@@ -284,6 +284,22 @@ class Toplevel1:
                     counter += 1
             self.on_tv.append(to_show)
             self.counter += 1
+            if block.children:
+                for child in block.children:
+                    self.show_in_tv_children(child)
+
+    def show_in_tv_children(self, metadata):
+        shown = False
+        if self.on_tv:
+            for block_shown in self.on_tv:
+                if metadata[0] == block_shown[0]:
+                    shown = True
+        if not shown:
+            to_show = [metadata[0], metadata[-1], "Unknown"]
+            self.treeview.insert(parent='', index='end', iid=self.counter, text='Folder', values=to_show)
+            counter = 0
+            self.on_tv.append(to_show)
+            self.counter += 1
 
     def update_record(self, id, values):
         self.treeview.item(id, text="Folder", values=values)
